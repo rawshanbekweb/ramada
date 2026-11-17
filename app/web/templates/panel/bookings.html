@@ -1,0 +1,25 @@
+{% extends "panel/base.html" %}
+{% block title %}Bronlar{% endblock %}
+{% block content %}
+<h1>Bronlar</h1>
+<form class="filters" method="get">
+  <select name="status"><option value="">Barcha holatlar</option>
+    {% for k, v in STATUS_UZ.items() %}<option value="{{ k }}" {{ 'selected' if status == k }}>{{ v }}</option>{% endfor %}</select>
+  <input name="q" value="{{ q }}" placeholder="Ism, telefon, xona, #ID">
+  <input type="date" name="start" value="{{ start }}"> <input type="date" name="end" value="{{ end }}">
+  <button class="btn sm">Filtr</button>
+  {% if start and end %}<a class="btn sm ghost" href="/panel/export.xlsx?start={{ start }}&end={{ end }}">Excel</a>{% endif %}
+</form>
+<table class="tbl">
+<tr><th>#</th><th>Yaratildi</th><th>Xona</th><th>Mehmon</th><th>Muddat</th><th>Summa</th><th>To'langan</th><th>Holat</th><th>Tasdiq</th><th>Xodim</th></tr>
+{% for b in rows %}
+<tr>
+  <td><a href="/panel/bookings/{{ b.id }}">{{ b.id }}</a></td><td>{{ b.created_at|dt }}</td><td>{{ b.room.number }}</td>
+  <td>{{ b.guest.full_name }}{% if b.smartphoneless %} 📵{% endif %}</td><td>{{ b.checkin_date|dm }}–{{ b.checkout_date|dm }}</td>
+  <td>{{ b.final_amount|sum }}{% if b.discount_amount %} <small class="muted">(−{{ b.discount_amount|sum }})</small>{% endif %}</td>
+  <td class="{{ 'err' if b.paid_amount < b.final_amount and b.status != 'cancelled' else '' }}">{{ b.paid_amount|sum }}</td>
+  <td>{{ STATUS_UZ[b.status] }}</td><td><span class="st s{{ b.stage }}">{{ b.stage }}/3</span></td><td>{{ b.created_by.full_name }}</td>
+</tr>
+{% else %}<tr><td colspan="10" class="muted">Topilmadi</td></tr>{% endfor %}
+</table>
+{% endblock %}

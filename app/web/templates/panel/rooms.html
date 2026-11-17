@@ -1,0 +1,51 @@
+{% extends "panel/base.html" %}
+{% block title %}Xonalar va zonalar{% endblock %}
+{% block content %}
+<h1>Xonalar, kameralar va eshik zonalari</h1>
+<p><a class="btn sm" href="/panel/rooms/qr-print" target="_blank">🖨 QR plitalarni chop etish</a></p>
+<div class="grid2">
+<section class="card">
+  <h2>Kameralar (NVR kanallari)</h2>
+  <table class="tbl"><tr><th>Kanal</th><th>Nomi</th><th>Qavat</th></tr>
+  {% for c in cams %}<tr><td>{{ c.channel }}</td><td>{{ c.name }}</td><td>{{ c.floor or "" }}</td></tr>{% endfor %}</table>
+  <form method="post" action="/panel/cameras" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <input name="name" placeholder="Nomi (2-qavat koridor)" required><input name="channel" type="number" placeholder="Kanal" required>
+    <input name="floor" type="number" placeholder="Qavat"><button class="btn sm">Saqlash</button></form>
+</section>
+<section class="card">
+  <h2>Zona ↔ xona bog'lash</h2>
+  <p class="muted">NVR'da har bir eshik uchun «hududga kirish» (region entrance) hududi chiziladi; uning raqami (regionID) shu yerda xonaga bog'lanadi. Asosiy kirish uchun «chiziq kesish» — turi «entrance».</p>
+  <form method="post" action="/panel/zones" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <select name="camera_id">{% for c in cams %}<option value="{{ c.id }}">{{ c.channel }} · {{ c.name }}</option>{% endfor %}</select>
+    <input name="region_id" type="number" placeholder="Region/line ID" required>
+    <select name="kind"><option value="door">eshik</option><option value="entrance">asosiy kirish</option></select>
+    <select name="room_id"><option value="">—</option>{% for r in rooms %}<option value="{{ r.id }}">{{ r.number }}</option>{% endfor %}</select>
+    <button class="btn sm">Bog'lash</button></form>
+  {% if entrance %}<p>Asosiy kirish: {% for z in entrance %}kanal {{ z.camera.channel }} / chiziq {{ z.region_id }} {% endfor %}</p>{% endif %}
+</section>
+</div>
+<section class="card">
+<table class="tbl">
+<tr><th>Xona</th><th>Qavat</th><th>Toifa / holat / faol</th><th>Eshik zonalari</th><th>QR</th><th>QR plita tekshiruvi</th></tr>
+{% for r in rooms %}
+<tr>
+  <td><b>{{ r.number }}</b></td><td>{{ r.floor }}</td>
+  <td><form method="post" action="/panel/rooms/{{ r.id }}" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <select name="category_id">{% for c in cats %}<option value="{{ c.id }}" {{ 'selected' if c.id == r.category_id }}>{{ c.name }}</option>{% endfor %}</select>
+    <select name="state">{% for s in states %}<option value="{{ s }}" {{ 'selected' if s == r.state }}>{{ ROOM_STATE_UZ[s] }}</option>{% endfor %}</select>
+    <label class="chk"><input type="checkbox" name="active" {{ 'checked' if r.active }}> faol</label>
+    <button class="btn sm ghost">Saqlash</button></form></td>
+  <td>{% for z in zone_by_room.get(r.id, []) %}<span class="tag">kanal {{ z.camera.channel }} / zona {{ z.region_id }}
+      <form method="post" action="/panel/zones/{{ z.id }}/delete" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="x" title="O'chirish">×</button></form></span>
+    {% else %}<span class="err">bog'lanmagan</span>{% endfor %}</td>
+  <td>v{{ r.qr_version }} <form method="post" action="/panel/rooms/{{ r.id }}/reissue-qr" class="inline" onsubmit="return confirm('Eski QR yaroqsiz bo\'ladi. Davom etilsinmi?')"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn sm ghost">Yangilash</button></form></td>
+  <td>{{ last_qr.get(r.id)|d }}</td>
+</tr>
+{% endfor %}
+</table>
+<form method="post" action="/panel/rooms/add" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <input name="number" placeholder="Xona raqami" required><input name="floor" type="number" placeholder="Qavat" required>
+  <select name="category_id">{% for c in cats %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select>
+  <button class="btn sm">Xona qo'shish</button></form>
+</section>
+{% endblock %}

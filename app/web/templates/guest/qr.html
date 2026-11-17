@@ -1,0 +1,48 @@
+{% extends "guest/base.html" %}
+{% block title %}{{ t("q.title", lang) }} · {{ hotel.name }}{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>{{ t("q.title", lang) }}{% if res.room %} · {{ res.room.number }}{% endif %}</h1>
+  {% if res.kind == "bad_code" %}
+    <p class="err big">{{ t("q.bad_code", lang) }}</p>
+  {% elif res.kind == "need_last4" %}
+    {% if res.extra.get("wrong") %}<p class="err">{{ t("g.last4_wrong", lang) }}</p>{% endif %}
+    <form method="post" action="/q/{{ token }}?lang={{ lang }}">
+      <label>{{ t("g.last4_label", lang) }}
+        <input name="last4" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required autocomplete="off" autofocus>
+      </label>
+      <button class="btn">{{ t("g.last4_btn", lang) }}</button>
+    </form>
+  {% elif res.kind == "too_many" %}
+    <p class="err">{{ t("g.too_many", lang) }}</p>
+  {% elif res.kind == "no_booking" %}
+    <p class="warn big">{{ t("q.no_booking", lang) }}</p>
+  {% elif res.kind == "mismatch" %}
+    <p class="warn big">{{ t("q.mismatch", lang, qr_room=res.room.number, room=res.booking.room.number) }}</p>
+  {% elif res.kind == "not_paid" %}
+    <p class="warn">{{ t("q.not_paid", lang) }}</p>
+  {% elif res.kind == "already" %}
+    <p class="ok big">✅ {{ t("q.already", lang) }}</p>
+    {% include "guest/_services.html" %}
+  {% elif res.kind == "question" %}
+    <p class="big">{{ t("q.question", lang, room=res.room.number, amount=res.booking.paid_amount|money(lang)) }}</p>
+    <form method="post" action="/q/{{ token }}/answer/{{ res.scan.id }}?lang={{ lang }}">
+      <button class="btn big" name="answer" value="yes">✅ {{ t("q.yes", lang) }}</button>
+    </form>
+    <details class="no">
+      <summary>{{ t("q.other_amount", lang) }}</summary>
+      <form method="post" action="/q/{{ token }}/answer/{{ res.scan.id }}?lang={{ lang }}">
+        <label>{{ t("q.amount_claimed", lang) }} <input name="claimed_amount" inputmode="numeric"></label>
+        <button class="btn danger" name="answer" value="other_amount">{{ t("q.send", lang) }}</button>
+      </form>
+    </details>
+    <details class="no">
+      <summary>{{ t("q.other_room", lang) }}</summary>
+      <form method="post" action="/q/{{ token }}/answer/{{ res.scan.id }}?lang={{ lang }}">
+        <label>{{ t("q.room_claimed", lang) }} <input name="claimed_room" maxlength="10"></label>
+        <button class="btn danger" name="answer" value="other_room">{{ t("q.send", lang) }}</button>
+      </form>
+    </details>
+  {% endif %}
+</section>
+{% endblock %}

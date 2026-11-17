@@ -1,0 +1,50 @@
+{% extends "panel/base.html" %}
+{% block title %}Hisobotlar{% endblock %}
+{% block content %}
+<h1>Hisobotlar</h1>
+<form class="filters" method="get">
+  <select name="kind">{% for k, v in [("daily", "Kunlik"), ("weekly", "Haftalik"), ("monthly", "Oylik")] %}<option value="{{ k }}" {{ 'selected' if kind == k }}>{{ v }}</option>{% endfor %}</select>
+  <input type="date" name="day" value="{{ day }}"><button class="btn sm">Ko'rish</button>
+</form>
+{% if kind == "daily" %}
+  {% set d = data %}
+  <h2>{{ d.day|d }}</h2>
+  <div class="tiles">
+    <div class="tile"><div class="k">Bandlik (tun)</div><div class="v">{{ d.occupancy }}/{{ d.rooms }}</div><div class="s">{{ d.occupancy_pct }}%</div></div>
+    <div class="tile"><div class="k">Tushum</div><div class="v">{{ d.revenue.total|sum }}</div><div class="s">onlayn {{ d.revenue.online|sum }} · naqd {{ d.revenue.cash|sum }} · terminal {{ d.revenue.terminal|sum }}</div></div>
+    <div class="tile"><div class="k">3/3 ulushi</div><div class="v">{{ d.stages.full_pct if d.stages.full_pct is not none else "—" }}%</div><div class="s">{{ d.stages.s3 }}/{{ d.stages.total }}</div></div>
+    <div class="tile"><div class="k">ADR</div><div class="v">{{ d.adr|sum }}</div><div class="s">kirish sanog'i {{ d.entrances }} / joylashtirish {{ d.checkins }}</div></div>
+  </div>
+  <h3>To'xtab qolgan bronlar</h3>
+  <p>{% for b in d.stuck %}<a href="/panel/bookings/{{ b.id }}">#{{ b.id }} {{ b.room.number }} ({{ b.stage }}/3)</a> {% else %}Yo'q{% endfor %}</p>
+  <h3>Ogohlantirishlar</h3>
+  {% for a in d.alerts %}<div class="alert {{ a.severity|sev_class }}"><b>{{ a.rule }}</b> {{ a.at|time }} — {{ a.message }}</div>{% else %}<p class="muted">Yo'q</p>{% endfor %}
+  <h3>Kassa</h3>
+  <table class="tbl">{% for s in d.shifts %}<tr><td>{{ s.user.full_name }}</td><td>{{ s.closed_at|dt }}</td><td>farq {{ s.diff|sum }}</td></tr>{% else %}<tr><td class="muted">Yopilgan smena yo'q</td></tr>{% endfor %}</table>
+{% elif kind == "weekly" %}
+  {% set w = data %}
+  <h2>{{ w.start|d }} – {{ w.end|d }}</h2>
+  <p>Tushum {{ w.revenue.total|sum }} · ADR {{ w.adr|sum }} · 3/3: {{ w.stages.full_pct if w.stages.full_pct is not none else "—" }}%</p>
+  <table class="tbl"><tr><th>Xodim</th><th>Bronlar</th><th>3/3 %</th><th>Smartfonsiz %</th><th>Chegirmalar</th><th>Chegirma summasi</th><th>Kassa farqi</th><th>Ogohl.</th></tr>
+  {% for r in w.staff %}<tr><td>{{ r.user.full_name }}</td><td>{{ r.bookings }}</td><td>{{ r.full_pct if r.full_pct is not none else "—" }}</td><td>{{ r.smartphoneless_pct if r.smartphoneless_pct is not none else "—" }}</td><td>{{ r.discounts }}</td><td>{{ r.discount_sum|sum }}</td><td>{{ r.cash_diff|sum }}</td><td>{{ r.alerts }}</td></tr>{% endfor %}</table>
+  <p>Takrorlangan: {% for room, n in w.repeated %}{{ room }} ×{{ n }} {% else %}yo'q{% endfor %}</p>
+  <p>Choyshab: berildi {{ w.linen.sent }}, qaytdi {{ w.linen.returned }}, chiqishlar {{ w.linen.checkouts }}</p>
+{% else %}
+  {% set m = data %}{% set k = m.kpi %}
+  <h2>{{ m.start.strftime("%m.%Y") }}</h2>
+  <table class="tbl">
+    <tr><th>KPI</th><th>Natija</th><th>Maqsad</th></tr>
+    <tr><td>3/3 bronlar ulushi</td><td>{{ k.full_pct if k.full_pct is not none else "—" }}%</td><td>≥ 85%</td></tr>
+    <tr><td>Kamera 2-bosqich ulushi</td><td>{{ k.camera_pct if k.camera_pct is not none else "—" }}%</td><td>≥ 95%</td></tr>
+    <tr><td>Bronsiz xonada harakat</td><td>{{ k.r2_count }}</td><td>&lt; 2</td></tr>
+    <tr><td>Tasdiqsiz chegirma</td><td>{{ k.unapproved_discounts }}</td><td>0</td></tr>
+    <tr><td>«Boshqa summa/xona» javoblari</td><td>{{ k.r5_count }}</td><td>0</td></tr>
+    <tr><td>Kassa farqi</td><td>{{ k.cash_diff|sum }}</td><td>0</td></tr>
+    <tr><td>ADR</td><td>{{ k.adr|sum }}</td><td>+15%</td></tr>
+  </table>
+  <h3>Kunlik tushum</h3>
+  <table class="tbl">{% for d, v in m.by_day.items() %}<tr><td>{{ d|d }}</td><td>{{ v|sum }}</td></tr>{% endfor %}</table>
+{% endif %}
+<section class="card"><h3>Excel eksport</h3>
+<form method="get" action="/panel/export.xlsx" class="inline"><input type="date" name="start" required> <input type="date" name="end" required> <button class="btn sm">Yuklab olish</button></form></section>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "guest/base.html" %}
+{% block content %}
+<section class="card">
+  <h1>{{ t("g.title", lang) }}</h1>
+  <p>{{ t("g.other_device", lang) }}</p>
+  {% if wrong %}<p class="err">{{ t("g.last4_wrong", lang) }}</p>{% endif %}
+  <form method="post" action="/g/{{ b.guest_token }}/unlock?lang={{ lang }}">
+    <label>{{ t("g.last4_label", lang) }}
+      <input name="last4" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required autocomplete="off">
+    </label>
+    <button class="btn">{{ t("g.last4_btn", lang) }}</button>
+  </form>
+</section>
+{% endblock %}

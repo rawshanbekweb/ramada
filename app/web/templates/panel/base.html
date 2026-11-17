@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Panel{% endblock %} · Shaffof qabul</title>
+<link rel="stylesheet" href="/static/panel.css">
+</head>
+<body>
+{% if user %}
+<header class="nav">
+  <a class="logo" href="/panel/">Shaffof qabul</a>
+  <nav>
+    <a href="/panel/">Bandlik</a>
+    <a href="/panel/bookings">Bronlar</a>
+    <a href="/panel/alerts">Ogohlantirishlar</a>
+    <a href="/panel/events">Kamera</a>
+    <a href="/panel/reports">Hisobotlar</a>
+    <a href="/panel/shifts">Smenalar</a>
+    <a href="/panel/housekeeping">Farrosh</a>
+    {% if user.role == "owner" %}
+    <a href="/panel/rooms">Xonalar va zonalar</a>
+    <a href="/panel/tariffs">Tariflar</a>
+    <a href="/panel/staff">Xodimlar</a>
+    <a href="/panel/settings">Sozlamalar</a>
+    <a href="/panel/audit">Jurnal</a>
+    {% endif %}
+  </nav>
+  <span class="me">{{ user.full_name }} · {{ ROLE_UZ[user.role] }} · <a href="/panel/logout">Chiqish</a></span>
+</header>
+{% endif %}
+<main class="main">
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{% extends "panel/base.html" %}
+{% block title %}Smenalar{% endblock %}
+{% block content %}
+<h1>Smenalar</h1>
+<table class="tbl"><tr><th>#</th><th>Xodim</th><th>Ochildi</th><th>Yopildi</th><th>Ochilishda</th><th>Kutilgan</th><th>Sanalgan</th><th>Farq</th><th>Qabul farqi</th></tr>
+{% for s in rows %}<tr><td>{{ s.id }}</td><td>{{ s.user.full_name }}</td><td>{{ s.opened_at|dt }}</td><td>{{ s.closed_at|dt }}</td>
+<td>{{ s.opening_cash|sum }}</td><td>{{ s.expected_cash|sum }}</td><td>{{ s.counted_cash|sum }}</td>
+<td class="{{ 'err' if s.diff }}">{{ s.diff|sum }}</td><td class="{{ 'err' if s.handover_diff }}">{{ s.handover_diff|sum }}</td></tr>
+{% endfor %}</table>
+{% endblock %}

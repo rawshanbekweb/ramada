@@ -1,0 +1,9 @@
+{% extends "panel/base.html" %}
+{% block title %}Jurnal{% endblock %}
+{% block content %}
+<h1>Audit jurnali (faqat qo'shiladi)</h1>
+<form class="filters" method="get"><input name="action" value="{{ action }}" placeholder="amal (masalan: tariff, booking.cancel)"><button class="btn sm">Filtr</button></form>
+<table class="tbl"><tr><th>#</th><th>Vaqt</th><th>Kim</th><th>Amal</th><th>Obyekt</th><th>Eski</th><th>Yangi</th></tr>
+{% for l in rows %}<tr><td>{{ l.id }}</td><td>{{ l.at|dt }}</td><td>{{ l.actor }}</td><td>{{ l.action }}</td><td>{{ l.object_type or "" }} {{ l.object_id or "" }}</td>
+<td><small>{{ l.old or "" }}</small></td><td><small>{{ l.new or "" }}</small></td></tr>{% endfor %}</table>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "panel/base.html" %}
+{% block title %}Farrosh tekshiruvi{% endblock %}
+{% block content %}
+<h1>Ertalabki tekshiruv — {{ day|d }}</h1>
+<form class="filters" method="get"><input type="date" name="day" value="{{ day.isoformat() }}"><button class="btn sm">Ko'rish</button></form>
+<table class="tbl"><tr><th>Xona</th><th>Farrosh belgisi</th><th>Kechasi bron</th><th>Kim / qachon</th><th>Mos</th></tr>
+{% for r in rows %}
+{% set c = r.check %}
+<tr><td>{{ r.room.number }}</td>
+<td>{% if c %}{{ "ishlatilgan" if c.used else "ishlatilmagan" }}{% else %}<span class="err">belgilanmagan</span>{% endif %}</td>
+<td>{% if r.booking %}<a href="/panel/bookings/{{ r.booking.id }}">#{{ r.booking.id }}</a>{% else %}—{% endif %}</td>
+<td>{% if c %}{{ users.get(c.user_id) }} · {{ c.at|time }}{% endif %}</td>
+<td>{% if c %}{% if c.used and not r.booking %}<b class="err">❗ R7</b>{% elif not c.used and r.booking %}<span class="warn">bron bor, ishlatilmagan</span>{% else %}✅{% endif %}{% endif %}</td></tr>
+{% endfor %}</table>
+{% endblock %}

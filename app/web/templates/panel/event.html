@@ -1,0 +1,18 @@
+{% extends "panel/base.html" %}
+{% block title %}Hodisa #{{ ev.id }}{% endblock %}
+{% block content %}
+<h1>Kamera hodisasi #{{ ev.id }}</h1>
+<section class="card">
+  <dl class="kv">
+    <dt>Vaqt</dt><dd>{{ ev.occurred_at|dt }} (qabul: {{ ev.received_at|dt }})</dd>
+    <dt>Kamera</dt><dd>{{ cam.name if cam else "—" }} (kanal {{ cam.channel if cam else "?" }})</dd>
+    <dt>Xona</dt><dd>{{ room.number if room else "—" }}</dd>
+    <dt>Turi</dt><dd>{{ ev.event_type }} · {{ ev.kind }}</dd>
+    <dt>Xulosa</dt><dd>{{ ev.verdict or "—" }}</dd>
+  </dl>
+  {% if ev.snapshot_path %}<img class="snap" src="/panel/events/{{ ev.id }}/snapshot" alt="snapshot">{% endif %}
+  {% if rtsp %}<h3>NVR yozuvi</h3>
+  <p>iVMS-4200 / Hik-Connect'da kanal {{ cam.channel }}, vaqt {{ ev.occurred_at|dt }} ±30 soniya. VLC orqali (NVR lokal tarmog'ida):</p>
+  <code class="block">{{ rtsp }}</code>{% endif %}
+</section>
+{% endblock %}

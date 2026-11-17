@@ -1,0 +1,16 @@
+{% extends "panel/base.html" %}
+{% block title %}Sozlamalar{% endblock %}
+{% block content %}
+<h1>Sozlamalar</h1>
+<form method="post" action="/panel/settings" class="card">
+<input type="hidden" name="csrf" value="{{ csrf }}">
+{% for key, label, kind in fields %}
+  {% if kind == "bool" %}
+    <label class="chk"><input type="checkbox" name="{{ key }}" {{ 'checked' if values[key] }}> {{ label }}</label>
+  {% else %}
+    <label>{{ label }} <input name="{{ key }}" value="{{ values[key] if values[key] is not none else '' }}" {% if kind == "int" %}inputmode="numeric"{% endif %}></label>
+  {% endif %}
+{% endfor %}
+<button class="btn">Saqlash</button>
+</form>
+{% endblock %}

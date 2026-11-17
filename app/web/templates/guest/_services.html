@@ -1,0 +1,9 @@
+<div class="services">
+  {% if wifi.password %}
+  <div class="wifi"><div>📶 {{ t("q.wifi", lang) }}: <b>{{ wifi.ssid }}</b></div>
+    <div>{{ t("q.wifi_password", lang) }}: <code class="pw">{{ wifi.password }}</code></div></div>
+  {% endif %}
+  {% if breakfast %}<div>🍳 {{ t("q.breakfast", lang) }}: {{ breakfast }}</div>{% endif %}
+  {% if incentive %}<div>🎁 {{ incentive }}</div>{% endif %}
+  <div>☎️ {{ hotel.phone }}</div>
+</div>

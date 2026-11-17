@@ -1,0 +1,39 @@
+{% extends "panel/base.html" %}
+{% block title %}Tariflar{% endblock %}
+{% block content %}
+<h1>Tarif jadvali</h1>
+<p class="muted">Toifa × kun turi × mavsum. Bo'sh katak — asosiy (mavsumsiz) narx ishlatiladi. Har bir o'zgarish jurnalga yoziladi. Narxlar so'mda, bir tun uchun.</p>
+<form method="post" action="/panel/tariffs" class="card">
+<input type="hidden" name="csrf" value="{{ csrf }}">
+<table class="tbl">
+<tr><th>Toifa</th><th>Mavsum</th>{% for d in day_types %}<th>{{ {"weekday": "Ish kuni", "weekend": "Dam olish (Ju/Sha)", "holiday": "Bayram"}[d] }}</th>{% endfor %}</tr>
+{% for c in cats %}
+  {% for s in [none] + seasons %}
+  <tr><td>{{ c.name }}</td><td>{{ s.name if s else "Asosiy" }}</td>
+    {% for d in day_types %}<td><input class="num" name="p:{{ c.id }}:{{ d }}:{{ s.id if s else 'base' }}" value="{{ tariffs.get((c.id, d, s.id if s else none), '') }}" inputmode="numeric"></td>{% endfor %}
+  </tr>
+  {% endfor %}
+{% endfor %}
+</table>
+<button class="btn">Saqlash</button>
+</form>
+<div class="grid2">
+<section class="card"><h2>Mavsumlar</h2>
+  <table class="tbl">{% for s in seasons %}<tr><td>{{ s.name }}</td><td>{{ s.start_date|d }} – {{ s.end_date|d }}</td><td>{{ s.priority }}</td>
+    <td><form method="post" action="/panel/seasons/{{ s.id }}/delete" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="x">×</button></form></td></tr>{% endfor %}</table>
+  <form method="post" action="/panel/seasons" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <input name="name" placeholder="Nomi" required><input type="date" name="start_date" required><input type="date" name="end_date" required>
+    <input name="priority" type="number" value="0" title="Ustuvorlik"><button class="btn sm">Qo'shish</button></form>
+</section>
+<section class="card"><h2>Bayramlar</h2>
+  <table class="tbl">{% for h in holidays %}<tr><td>{{ h.day|d }}</td><td>{{ h.name }}</td>
+    <td><form method="post" action="/panel/holidays/{{ h.id }}/delete" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="x">×</button></form></td></tr>{% endfor %}</table>
+  <form method="post" action="/panel/holidays" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="date" name="day" required><input name="name" placeholder="Nomi" required><button class="btn sm">Qo'shish</button></form>
+  <h2>Toifalar</h2>
+  <table class="tbl">{% for c in cats %}<tr><td>{{ c.code }}</td><td>{{ c.name }}</td><td>{{ c.capacity }} kishi</td></tr>{% endfor %}</table>
+  <form method="post" action="/panel/categories" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <input name="code" placeholder="Kod (LUX)" required><input name="name" placeholder="Nomi" required><input name="capacity" type="number" value="2"><button class="btn sm">Qo'shish</button></form>
+</section>
+</div>
+{% endblock %}

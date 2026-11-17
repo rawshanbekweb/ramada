@@ -1,0 +1,73 @@
+{% extends "panel/base.html" %}
+{% block title %}Bron #{{ b.id }}{% endblock %}
+{% block content %}
+<h1>Bron #{{ b.id }} · {{ b.room.number }} · <span class="st s{{ b.stage }}">{{ b.stage }}/3</span> · {{ STATUS_UZ[b.status] }}</h1>
+<div class="grid2">
+<section class="card">
+  <h2>Ma'lumot</h2>
+  <dl class="kv">
+    <dt>Mehmon</dt><dd>{{ b.guest.full_name }} · {{ b.guest.phone }}{% if b.guest.document %} · {{ b.guest.document }}{% endif %}{% if b.guest.document_photo %} · <a href="/panel/guest-photo/{{ b.id }}" target="_blank">pasport surati</a>{% endif %}</dd>
+    <dt>Xona</dt><dd>{{ b.room.number }} ({{ b.room.category.name }})</dd>
+    <dt>Muddat</dt><dd>{{ b.checkin_date|d }} → {{ b.checkout_date|d }} ({{ b.nights }} tun)</dd>
+    <dt>Rasmiy narx</dt><dd>{{ b.official_amount|sum }}</dd>
+    <dt>Chegirma</dt><dd>{{ b.discount_amount|sum }} {% if b.discount_status %}({{ b.discount_status }}){% endif %}</dd>
+    <dt>Qo'shimcha</dt><dd>{{ b.extra_amount|sum }}</dd>
+    <dt>Yakuniy</dt><dd><b>{{ b.final_amount|sum }}</b></dd>
+    <dt>To'langan</dt><dd>{{ b.paid_amount|sum }}</dd>
+    <dt>Mehmon tasdig'i</dt><dd>{{ b.guest_accepted_at|dt }} {% if b.guest_accepted_amount %}({{ b.guest_accepted_amount|sum }}){% endif %}</dd>
+    <dt>Smartfonsiz</dt><dd>{{ "ha" if b.smartphoneless else "yo'q" }}</dd>
+    <dt>Kalit</dt><dd>{{ b.key_issued_at|dt }}</dd>
+    <dt>Yaratdi</dt><dd>{{ b.created_by.full_name }} · {{ b.created_at|dt }}</dd>
+    <dt>Mehmon havolasi</dt><dd><small>{{ guest_url }}</small> · amal qiladi {{ b.guest_token_expires_at|dt }}</dd>
+    {% if b.cancel_reason %}<dt>Bekor sababi</dt><dd>{{ b.cancel_reason }}</dd>{% endif %}
+  </dl>
+  {% if b.is_open %}
+  <div class="actions">
+    <form method="post" action="/panel/bookings/{{ b.id }}/resend"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn sm ghost">SMS qayta yuborish</button></form>
+    {% if b.status == "active" %}<form method="post" action="/panel/bookings/{{ b.id }}/checkout" onsubmit="return confirm('Chiqarilsinmi?')"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn sm ghost">Chiqarish</button></form>{% endif %}
+    <form method="post" action="/panel/bookings/{{ b.id }}/cancel" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}"><input name="reason" placeholder="Bekor qilish sababi" required><button class="btn sm danger">Bekor qilish</button></form>
+  </div>
+  {% endif %}
+</section>
+<section class="card">
+  <h2>Tasdiqlar zanjiri</h2>
+  <table class="tbl">
+    <tr><th>Bosqich</th><th>Manba</th><th>Vaqt</th><th>Dalil</th></tr>
+    {% for c in b.confirmations %}
+      <tr class="{{ 'void' if c.void }}"><td>{{ c.stage }}/3</td><td>{{ c.source }}</td><td>{{ c.at|dt }}</td>
+      <td>{% if c.evidence.get("video") %}<a href="{{ c.evidence.video }}">🎥 video</a>{% endif %} {% if c.void %}<small>(xona almashgan)</small>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="4" class="muted">Hali yo'q</td></tr>{% endfor %}
+  </table>
+  <h3>Kirish oynalari</h3>
+  <table class="tbl">
+    {% for w in windows %}<tr><td>{{ w.room.number }}</td><td>{{ w.opened_at|time }}–{{ w.closes_at|time }}</td><td>{{ w.result }}</td></tr>
+    {% else %}<tr><td class="muted">Yo'q</td></tr>{% endfor %}
+  </table>
+  <h3>QR skanerlar</h3>
+  <table class="tbl">
+    {% for s in scans %}<tr><td>{{ s.at|dt }}</td><td>{{ s.method }}</td><td>{{ s.outcome }}</td><td>{{ s.answer or "" }}</td></tr>
+    {% else %}<tr><td class="muted">Yo'q</td></tr>{% endfor %}
+  </table>
+</section>
+</div>
+<div class="grid2">
+<section class="card">
+  <h2>To'lovlar</h2>
+  <table class="tbl"><tr><th>Vaqt</th><th>Usul</th><th>Summa</th><th>Chek / ID</th><th>Holat</th></tr>
+  {% for p in b.payments %}<tr><td>{{ p.paid_at|dt }}</td><td>{{ p.method }}</td><td>{{ p.amount|sum }}</td><td>{{ p.receipt_no or p.external_id or "" }}</td><td>{{ p.status }}</td></tr>
+  {% else %}<tr><td colspan="5" class="muted">Yo'q</td></tr>{% endfor %}</table>
+  <h3>Narx tarkibi</h3>
+  <table class="tbl">{% for l in b.price_breakdown %}<tr><td>{{ l.kind }}</td><td>{{ l.date or "" }}</td><td>{{ l.get("day_type", "") }} {{ l.get("season") or "" }}</td><td>{{ l.amount|sum }}</td></tr>{% endfor %}</table>
+  {% if discounts %}<h3>Chegirma so'rovlari</h3>
+  <table class="tbl">{% for x in discounts %}<tr><td>{{ x.amount|sum }}</td><td>{{ x.reason }}</td><td>{{ x.status }}</td><td>{{ x.approver_role }}</td></tr>{% endfor %}</table>{% endif %}
+  {% if survey %}<h3>So'rovnoma</h3><p>Baho: {{ survey.rating or "—" }} · {% if survey.price_complaint %}<b class="err">narx shikoyati</b> ({{ survey.paid_amount_claimed|sum }}){% endif %} {{ survey.comment or "" }}</p>{% endif %}
+</section>
+<section class="card">
+  <h2>Ogohlantirishlar</h2>
+  {% for a in alerts %}<div class="alert {{ a.severity|sev_class }}"><b>{{ a.rule }}</b> · {{ a.at|dt }} · {{ a.status }}<div>{{ a.message }}</div></div>
+  {% else %}<p class="muted">Yo'q</p>{% endfor %}
+  <h2>Jurnal</h2>
+  <table class="tbl">{% for l in logs %}<tr><td>{{ l.at|dt }}</td><td>{{ l.actor }}</td><td>{{ l.action }}</td><td><small>{{ l.new or "" }}</small></td></tr>{% endfor %}</table>
+</section>
+</div>
+{% endblock %}

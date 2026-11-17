@@ -1,0 +1,129 @@
+"""Tashqi tizimlar: Payme, Click va mehmonxonadagi edge agent (NVR hodisalari)."""
+from __future__ import annotations
+
+import base64
+import binascii
+import json
+import uuid
+from datetime import datetime
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.config import get_settings
+from app.db import get_db
+from app.integrations import click, payme
+from app.models import Camera, CameraZone
+from app.security import verify_edge_signature
+from app.services import entry
+
+router = APIRouter(prefix="/api")
+
+
+@router.get("/health")
+def health():
+    return {"ok": True}
+
+
+@router.post("/payme")
+async def payme_rpc(request: Request, db: Session = Depends(get_db)):
+    try:
+        body = await request.json()
+    except (json.JSONDecodeError, ValueError):
+        return JSONResponse({"id": None, "error": {"code": payme.E_PARSE, "message": "Parse error"}})
+    return JSONResponse(payme.rpc(db, request.headers.get("authorization"), body))
+
+
+@router.post("/click/prepare")
+async def click_prepare(request: Request, db: Session = Depends(get_db)):
+    form = dict(await request.form())
+    return JSONResponse(click.prepare(db, form))
+
+
+@router.post("/click/complete")
+async def click_complete(request: Request, db: Session = Depends(get_db)):
+    form = dict(await request.form())
+    return JSONResponse(click.complete(db, form))
+
+
+# ------------------------------------------------------------------ edge agent
+async def _verified_json(request: Request) -> dict:
+    body = await request.body()
+    if not verify_edge_signature(request.headers.get("x-edge-timestamp"), request.headers.get("x-edge-signature"), body):
+        raise HTTPException(401, "bad signature")
+    try:
+        return json.loads(body or b"{}")
+    except json.JSONDecodeError:
+        raise HTTPException(400, "bad json")
+
+
+def _save_snapshot(b64: str | None) -> str | None:
+    if not b64:
+        return None
+    try:
+        data = base64.b64decode(b64, validate=True)
+    except (binascii.Error, ValueError):
+        return None
+    if len(data) > 2_000_000 or not data.startswith(b"\xff\xd8"):
+        return None
+    folder = Path(get_settings().storage_dir) / "snapshots" / datetime.now().strftime("%Y%m%d")
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f"{uuid.uuid4().hex}.jpg"
+    path.write_bytes(data)
+    return str(path)
+
+
+@router.post("/edge/events")
+async def edge_events(request: Request, db: Session = Depends(get_db)):
+    """Edge agent NVR hodisalarini paket bilan yuboradi (internet uzilsa — keyin, navbatdan)."""
+    payload = await _verified_json(request)
+    accepted, duplicates = [], 0
+    for item in payload.get("events", []):
+        try:
+            occurred = datetime.fromisoformat(item["occurred_at"])
+            ev = entry.ingest_event(
+                db,
+                channel=int(item["channel"]),
+                region_id=int(item.get("region_id") or 0),
+                event_type=str(item.get("event_type", "regionEntrance")),
+                occurred_at=occurred,
+                edge_event_id=str(item.get("id")) if item.get("id") else None,
+                snapshot_path=_save_snapshot(item.get("snapshot_b64")),
+                raw={k: v for k, v in item.items() if k != "snapshot_b64"},
+            )
+        except (KeyError, ValueError, TypeError):
+            continue
+        if ev is None:
+            duplicates += 1
+        else:
+            accepted.append(item.get("id"))
+    entry.heartbeat(db, {"nvr_ok": payload.get("nvr_ok", True), "queue": payload.get("queue", 0)})
+    return {"accepted": accepted, "duplicates": duplicates}
+
+
+@router.post("/edge/heartbeat")
+async def edge_heartbeat(request: Request, db: Session = Depends(get_db)):
+    payload = await _verified_json(request)
+    entry.heartbeat(
+        db,
+        {"nvr_ok": bool(payload.get("nvr_ok", True)), "queue": int(payload.get("queue", 0)), "version": payload.get("version")},
+    )
+    return {"ok": True}
+
+
+@router.post("/edge/config")
+async def edge_config(request: Request, db: Session = Depends(get_db)):
+    """Edge agentga qaysi kanallar/hududlar kuzatilishini aytadi."""
+    await _verified_json(request)
+    cams = db.scalars(select(Camera)).all()
+    zones = db.scalars(select(CameraZone)).all()
+    return {
+        "channels": sorted({c.channel for c in cams}),
+        "zones": [
+            {"channel": z.camera.channel, "region_id": z.region_id, "kind": z.kind, "room": z.room.number if z.room else None}
+            for z in zones
+        ],
+    }

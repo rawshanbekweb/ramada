@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{% block title %}{{ hotel.name }}{% endblock %}</title>
+<link rel="stylesheet" href="/static/guest.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">{{ hotel.name }}</div>
+  <nav class="langs">
+    {% for code in ["kaa", "uz", "ru", "en"] %}
+      <a href="{{ path }}?lang={{ code }}" class="{{ 'on' if code == lang else '' }}">{{ code|upper }}</a>
+    {% endfor %}
+  </nav>
+</header>
+<main class="wrap">
+{% block content %}{% endblock %}
+</main>
+<footer class="foot">
+  <div>{{ t("g.contact", lang) }}: <a href="tel:{{ hotel.phone|replace(' ', '') }}">{{ hotel.phone }}</a></div>
+  <details><summary>🔒</summary><p class="muted">{{ t("g.privacy", lang) }}</p></details>
+</footer>
+</body>
+</html>

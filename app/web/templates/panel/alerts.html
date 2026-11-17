@@ -1,0 +1,29 @@
+{% extends "panel/base.html" %}
+{% block title %}Ogohlantirishlar{% endblock %}
+{% block content %}
+<h1>Ogohlantirishlar</h1>
+<form class="filters" method="get">
+  <select name="status"><option value="">Barchasi</option>
+    {% for s in ["new", "ack", "resolved", "false_positive"] %}<option value="{{ s }}" {{ 'selected' if status == s }}>{{ s }}</option>{% endfor %}</select>
+  <select name="rule"><option value="">Barcha qoidalar</option>
+    {% for code, info in rules.items() %}<option value="{{ code }}" {{ 'selected' if rule == code }}>{{ code }} — {{ info[1] }}</option>{% endfor %}</select>
+  <button class="btn sm">Filtr</button>
+</form>
+{% for a in rows %}
+<div class="alert {{ a.severity|sev_class }}">
+  <div><b>{{ a.rule }}</b> · {{ a.severity }} · {{ a.at|dt }} {% if a.room %}· xona {{ a.room.number }}{% endif %}
+    {% if a.booking_id %}· <a href="/panel/bookings/{{ a.booking_id }}">bron #{{ a.booking_id }}</a>{% endif %}
+    {% if a.user %}· {{ a.user.full_name }}{% endif %} · <i>{{ a.status }}</i></div>
+  <div>{{ a.message }}</div>
+  {% if a.video_link %}<a href="{{ a.video_link }}">🎥 video</a>{% endif %}
+  {% if a.note %}<div class="muted">Izoh: {{ a.note }}</div>{% endif %}
+  <form method="post" action="/panel/alerts/{{ a.id }}" class="inline">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input name="note" placeholder="Izoh">
+    <button class="btn sm ghost" name="status" value="ack">Ko'rdim</button>
+    <button class="btn sm ghost" name="status" value="resolved">Hal qilindi</button>
+    <button class="btn sm ghost" name="status" value="false_positive">Noto'g'ri signal</button>
+  </form>
+</div>
+{% else %}<p class="muted">Yo'q</p>{% endfor %}
+{% endblock %}

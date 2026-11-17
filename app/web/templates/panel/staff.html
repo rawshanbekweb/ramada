@@ -1,0 +1,32 @@
+{% extends "panel/base.html" %}
+{% block title %}Xodimlar{% endblock %}
+{% block content %}
+<h1>Xodimlar</h1>
+<p class="muted">Xodim qo'shilgach, unga taklif kodini bering: Telegram botda <code>/start KOD</code>. Panelga faqat ega va administrator login/parol bilan kiradi.</p>
+<table class="tbl">
+<tr><th>Ism</th><th>Rol</th><th>Telegram</th><th>Taklif kodi</th><th>Panel login</th><th>Amallar</th></tr>
+{% for u in rows %}
+<tr class="{{ '' if u.active else 'void' }}">
+  <td>{{ u.full_name }}</td><td>{{ ROLE_UZ[u.role] }}</td><td>{{ "✅" if u.telegram_id else "—" }}</td>
+  <td>{% if not u.telegram_id and u.invite_code %}<code>{{ u.invite_code }}</code>{% endif %}</td><td>{{ u.login or "" }}</td>
+  <td>
+    <form method="post" action="/panel/staff/{{ u.id }}" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}">
+      {% if u.active %}<button class="btn sm ghost" name="action" value="deactivate">O'chirish</button>{% else %}<button class="btn sm ghost" name="action" value="activate">Faollashtirish</button>{% endif %}
+      <button class="btn sm ghost" name="action" value="invite">Yangi kod</button></form>
+    {% if u.role in ("owner", "admin") %}
+    <form method="post" action="/panel/staff/{{ u.id }}" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <input name="login" placeholder="login" value="{{ u.login or '' }}"><input name="password" type="password" placeholder="yangi parol (8+)">
+      <button class="btn sm ghost" name="action" value="password">Parol</button></form>
+    {% endif %}
+  </td>
+</tr>
+{% endfor %}
+</table>
+<form method="post" action="/panel/staff" class="card inline"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <input name="full_name" placeholder="F.I.Sh." required>
+  <select name="role">{% for r in roles %}<option value="{{ r }}">{{ ROLE_UZ[r] }}</option>{% endfor %}</select>
+  <input name="phone" placeholder="Telefon">
+  <select name="lang"><option value="uz">O'zbekcha</option><option value="kaa">Qaraqalpaqsha</option><option value="ru">Русский</option></select>
+  <button class="btn sm">Qo'shish</button>
+</form>
+{% endblock %}

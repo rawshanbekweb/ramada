@@ -1,0 +1,11 @@
+{% extends "guest/base.html" %}
+{% block content %}
+<section class="card">
+  {% if answered == "yes" %}
+    <p class="ok big">✅ {{ t("q.welcome", lang) }}</p>
+    {% include "guest/_services.html" %}
+  {% else %}
+    <p class="big">{{ t("q.reported", lang) }}</p>
+  {% endif %}
+</section>
+{% endblock %}

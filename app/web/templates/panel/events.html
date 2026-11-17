@@ -1,0 +1,10 @@
+{% extends "panel/base.html" %}
+{% block title %}Kamera hodisalari{% endblock %}
+{% block content %}
+<h1>Kamera hodisalari</h1>
+<p>Edge/NVR: {% if edge.online %}<span class="ok">aloqa bor</span>{% else %}<span class="err">aloqa yo'q</span>{% endif %} · oxirgi: {{ edge.last|dt }} · navbat: {{ edge.queue }}</p>
+<form class="filters" method="get"><input name="room" value="{{ room }}" placeholder="Xona raqami"><button class="btn sm">Filtr</button></form>
+<table class="tbl"><tr><th>#</th><th>Vaqt</th><th>Xona</th><th>Turi</th><th>Xulosa</th></tr>
+{% for e in rows %}<tr><td><a href="/panel/events/{{ e.id }}">{{ e.id }}</a></td><td>{{ e.occurred_at|dt }}</td><td>{{ rooms.get(e.room_id, "—") }}</td><td>{{ e.kind }} / {{ e.event_type }}</td><td>{{ e.verdict or "" }}</td></tr>
+{% else %}<tr><td colspan="5" class="muted">Yo'q</td></tr>{% endfor %}</table>
+{% endblock %}

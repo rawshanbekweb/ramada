@@ -1,0 +1,126 @@
+{% extends "guest/base.html" %}
+{% block title %}{{ t("g.title", lang) }} · {{ hotel.name }}{% endblock %}
+{% block content %}
+{% set paid = b.paid_amount %}
+
+{% if b.status == "cancelled" %}
+  <section class="card center"><p class="big">{{ t("g.cancelled", lang) }}</p></section>
+{% else %}
+
+<section class="card">
+  <h1>{{ t("g.title", lang) }} <span class="muted">#{{ b.id }}</span></h1>
+  <dl class="kv">
+    <dt>{{ t("g.room", lang) }}</dt><dd class="strong">{{ b.room.number }} · {{ b.room.category.name }}</dd>
+    <dt>{{ t("g.dates", lang) }}</dt><dd>{{ b.checkin_date|d }} → {{ b.checkout_date|d }}</dd>
+    <dt>{{ t("g.nights", lang) }}</dt><dd>{{ b.nights }}</dd>
+    <dt>{{ t("g.guest", lang) }}</dt><dd>{{ b.guest.full_name }}</dd>
+  </dl>
+</section>
+
+<section class="card">
+  <table class="lines">
+    {% for line in b.price_breakdown %}
+      <tr>
+        <td>{% if line.kind == "night" %}{{ line.date[8:10] }}.{{ line.date[5:7] }}{% if line.season %} · {{ line.season }}{% endif %}
+            {% elif line.kind == "early_checkin" %}⏰ early check-in {{ line.percent }}%
+            {% elif line.kind == "late_checkout" %}⏰ late check-out {{ line.percent }}%
+            {% elif line.kind == "room_change" %}🔁 {{ line["from"] }} → {{ line.to }}
+            {% else %}{{ line.kind }}{% endif %}</td>
+        <td class="r">{{ line.amount|money(lang) }}</td>
+      </tr>
+    {% endfor %}
+    <tr class="sep"><td>{{ t("g.official_price", lang) }}</td><td class="r">{{ b.official_amount|money(lang) }}</td></tr>
+    {% if b.discount_amount %}
+      <tr><td>{{ t("g.discount", lang) }}</td><td class="r">− {{ b.discount_amount|money(lang) }}</td></tr>
+    {% endif %}
+    {% if b.extra_amount %}
+      <tr><td>{{ t("g.extra", lang) }}</td><td class="r">+ {{ b.extra_amount|money(lang) }}</td></tr>
+    {% endif %}
+    <tr class="total"><td>{{ t("g.total", lang) }}{% if b.discount_amount %} <small>({{ t("g.with_discount", lang) }})</small>{% endif %}</td>
+      <td class="r">{{ b.final_amount|money(lang) }}</td></tr>
+    {% if paid %}
+      <tr><td>{{ t("g.paid", lang) }}</td><td class="r ok">{{ paid|money(lang) }}</td></tr>
+    {% endif %}
+  </table>
+  <p class="note">{{ t("g.price_note", lang) }}</p>
+</section>
+
+{% if b.discount_status == "pending" %}
+  <section class="card warn">{{ t("g.pending_discount", lang) }}</section>
+{% elif b.status == "pending" and not b.guest_accepted_at and not b.smartphoneless %}
+  <section class="card">
+    <p>{{ t("g.accept_hint", lang) }}</p>
+    <form method="post" action="/g/{{ b.guest_token }}/accept"><button class="btn big">✅ {{ t("g.accept_btn", lang) }} — {{ b.final_amount|money(lang) }}</button></form>
+  </section>
+{% else %}
+  {% if b.guest_accepted_at %}<p class="muted center">✅ {{ t("g.accepted", lang) }}: {{ b.guest_accepted_at|dt }}</p>{% endif %}
+{% endif %}
+
+{% if am %}
+  <section class="card accent">
+    <h2>{{ t("a.title", lang) }}</h2>
+    <p>{% if am.kind == "extend" %}{{ t("a.extend", lang, date=am.new_checkout_date.strftime("%d.%m.%Y")) }}{% else %}{{ t("a.room_change", lang, room=am.new_room.number) }}{% endif %}</p>
+    <p>{{ t("a.extra", lang) }}: <b>{{ am.extra_amount|money(lang) }}</b></p>
+    {% if not am.guest_accepted_at %}
+      <form method="post" action="/g/{{ b.guest_token }}/amendment"><button class="btn">✅ {{ t("g.accept_btn", lang) }}</button></form>
+    {% endif %}
+  </section>
+{% endif %}
+
+{% if due_now > 0 and (b.guest_accepted_at or b.smartphoneless) and b.status in ("pending", "active") %}
+  <section class="card">
+    <h2>{{ t("g.pay_title", lang) }} · {{ due_now|money(lang) }}</h2>
+    {% if pay_enabled.payme %}<a class="btn pay payme" href="/g/{{ b.guest_token }}/pay/payme">{{ t("g.pay_payme", lang) }}</a>{% endif %}
+    {% if pay_enabled.click %}<a class="btn pay click" href="/g/{{ b.guest_token }}/pay/click">{{ t("g.pay_click", lang) }}</a>{% endif %}
+    <p class="muted">{{ t("g.pay_cash", lang) }}</p>
+  </section>
+{% endif %}
+
+{% if b.payments %}
+  <section class="card">
+    <h2>🧾 {{ t("g.receipt", lang) }}</h2>
+    <table class="lines">
+      {% for p in b.payments if p.status == "paid" %}
+        <tr><td>{{ p.paid_at|dt }} · {{ p.method|upper }}{% if p.receipt_no %} · {{ t("g.receipt_no", lang) }} {{ p.receipt_no }}{% endif %}</td>
+            <td class="r">{{ p.amount|money(lang) }}</td></tr>
+      {% endfor %}
+    </table>
+  </section>
+{% endif %}
+
+{% if b.status in ("active", "checked_out") %}
+  <section class="card">
+    <h2>{{ t("g.status", lang) }}</h2>
+    <ol class="stages">
+      <li class="{{ 'done' if b.stage >= 1 else '' }}">{{ t("g.stage1", lang) }}</li>
+      <li class="{{ 'done' if b.stage >= 2 else '' }}">{{ t("g.stage2", lang) }}</li>
+      <li class="{{ 'done' if b.qr_confirmed_at else '' }}">{{ t("g.stage3", lang) }}</li>
+    </ol>
+    {% if b.status == "active" and not b.qr_confirmed_at %}
+      <p class="hint">📶 {{ t("g.stage3_hint", lang) }}</p>
+      {% if incentive %}<p class="hint">🎁 {{ incentive }}</p>{% endif %}
+    {% endif %}
+  </section>
+{% endif %}
+
+{% if b.status == "checked_out" %}
+  <section class="card">
+    <p class="big center">{{ t("g.checked_out", lang) }}</p>
+    {% if survey_enabled and not survey_done %}
+      <h2>{{ t("s.title", lang) }}</h2>
+      <form method="post" action="/g/{{ b.guest_token }}/survey" class="survey">
+        <label>{{ t("s.rating", lang) }}</label>
+        <div class="stars">{% for i in range(1, 6) %}<label><input type="radio" name="rating" value="{{ i }}"> {{ i }}★</label>{% endfor %}</div>
+        <label class="chk"><input type="checkbox" name="complaint" value="1"> {{ t("s.complaint", lang) }}</label>
+        <label>{{ t("s.paid_claim", lang) }} <input name="paid_claim" inputmode="numeric"></label>
+        <label>{{ t("s.comment", lang) }} <textarea name="comment" rows="3" maxlength="2000"></textarea></label>
+        <button class="btn">{{ t("s.send", lang) }}</button>
+      </form>
+    {% elif survey_done %}
+      <p class="ok center">{{ t("s.thanks", lang) }}</p>
+    {% endif %}
+  </section>
+{% endif %}
+
+{% endif %}
+{% endblock %}
