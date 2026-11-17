@@ -1,4 +1,3 @@
-import base64
 from datetime import timedelta
 
 from sqlalchemy import select
@@ -49,6 +48,3 @@ def heartbeat(db, nvr_ok=True):
     entry.heartbeat(db, {"nvr_ok": nvr_ok})
     db.commit()
 
-
-def payme_auth():
-    return "Basic " + base64.b64encode(b"Paycom:payme-test-key").decode()

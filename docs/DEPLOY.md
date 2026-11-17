@@ -18,21 +18,15 @@ Caddy HTTPS sertifikatini avtomatik oladi. Zaxira nusxa har kuni 03:30 da `backu
 2. Panel → Xodimlar bo'limida xodimni qo'shing. Xodim botga `/start KOD` yuboradi.
 3. Ega ham botga o'z kodini yuboradi (kod `init` buyrug'i natijasida chiqadi).
 
-## 3. Payme
+## 3. To'lovlar
 
-Biznes kabinetda kassa yarating. Endpoint: `https://DOMEN/api/payme`. Hisob maydoni: `booking_id`.
-Kassa ID → `SQ_PAYME_MERCHANT_ID`, kalit → `SQ_PAYME_KEY`. Sinov uchun test kalitni va `SQ_PAYME_CHECKOUT_URL=https://checkout.test.paycom.uz` ni ishlating.
+Onlayn to'lov yo'q. Reception botda «💵 Naqd» yoki «💳 Terminal» tugmasini bosib, summani va fiskal chek raqamini kiritadi. Mehmon baribir o'z telefonida summani tasdiqlaydi; ikkalasi ham bo'lmaguncha bron 1/3 ga o'tmaydi.
 
-## 4. Click
-
-Prepare URL: `https://DOMEN/api/click/prepare`, Complete URL: `https://DOMEN/api/click/complete`.
-`service_id`, `merchant_id`, `secret_key` qiymatlari `.env` ga yoziladi.
-
-## 5. SMS (eskiz.uz)
+## 4. SMS (eskiz.uz)
 
 `SQ_SMS_PROVIDER=eskiz`, login va parol kiritiladi. SMS shablonlarini eskiz'da oldindan tasdiqlatib olish kerak (matnlar `app/i18n/messages.py` faylida, `sms.*` kalitlari ostida).
 
-## 6. Kameralar va edge agent
+## 5. Kameralar va edge agent
 
 1. NVR'da har bir koridor kamerasida xona eshigi oldiga **hududga kirish** (Region Entrance) hududini chizing. Asosiy kirishga **chiziq kesish** (Line Crossing) qo'shing. Hodisalar uchun «Notify Surveillance Center» yoqilgan bo'lishi kerak.
 2. NVR'da faqat o'qish huquqiga ega alohida foydalanuvchi oching.
@@ -47,6 +41,6 @@ python -m edge.agent --config edge/config.toml      # systemd xizmati sifatida i
 
 NVR internetga ochilmaydi: agent faqat chiquvchi HTTPS ulanishdan foydalanadi. Internet uzilsa, hodisalar `edge.queue.db` faylida saqlanib turadi va aloqa tiklangach yuboriladi.
 
-## 7. QR plitalar
+## 6. QR plitalar
 
 Panel → Xonalar → «QR plitalarni chop etish» (10×15 sm). Plita yo'qolsa yoki nusxalangan bo'lsa, «Yangilash» tugmasi eski kodni bekor qiladi.

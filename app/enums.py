@@ -41,8 +41,8 @@ class ConfirmSource(StrEnum):
 
 
 class PaymentMethod(StrEnum):
-    PAYME = "payme"
-    CLICK = "click"
+    """To'lovlar faqat reception tomonidan qo'lda, fiskal chek raqami bilan kiritiladi."""
+
     CASH = "cash"
     TERMINAL = "terminal"
 

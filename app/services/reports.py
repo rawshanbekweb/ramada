@@ -62,7 +62,6 @@ def revenue(pays: list[Payment]) -> dict:
         by[p.method] += p.amount
     return {
         "total": sum(by.values()),
-        "online": by[PaymentMethod.PAYME] + by[PaymentMethod.CLICK],
         "cash": by[PaymentMethod.CASH],
         "terminal": by[PaymentMethod.TERMINAL],
         "by_method": dict(by),
@@ -146,7 +145,7 @@ def daily_text(db: Session, day: date | None = None) -> str:
     lines = [
         f"📊 <b>Kunlik hisobot — {d['day']:%d.%m.%Y}</b>",
         f"🏨 Bandlik (tun): {d['occupancy']}/{d['rooms']} ({d['occupancy_pct']}%) · ADR: {fmt_sum(d['adr'])}",
-        f"💰 Tushum: {fmt_sum(rv['total'])} (QR/onlayn {fmt_sum(rv['online'])}, naqd {fmt_sum(rv['cash'])}, terminal {fmt_sum(rv['terminal'])})",
+        f"💰 Tushum: {fmt_sum(rv['total'])} (naqd {fmt_sum(rv['cash'])}, terminal {fmt_sum(rv['terminal'])})",
         f"✅ Bronlar: {st['total']} · 3/3: {st['s3']} ({st['full_pct'] if st['full_pct'] is not None else '—'}%) · "
         f"2/3: {st['s2']} · 1/3: {st['s1']} · 0/3: {st['s0']} · smartfonsiz: {st['smartphoneless']}",
         f"🎥 Kamera 2-bosqich: {st['camera_pct'] if st['camera_pct'] is not None else '—'}% · "
@@ -181,7 +180,7 @@ def shift_report_text(db: Session, shift: Shift) -> str:
         f"💵 <b>Smena yopildi</b> — {shift.user.full_name}",
         f"🕒 {clock.fmt(shift.opened_at)} → {clock.fmt(shift.closed_at)}",
         f"Joylashtirishlar: {st['total']} · 3/3: {st['s3']} · 2/3: {st['s2']} · 1/3: {st['s1']} · 0/3: {st['s0']}",
-        f"To'lovlar: {fmt_sum(rv['total'])} (naqd {fmt_sum(rv['cash'])}, terminal {fmt_sum(rv['terminal'])}, onlayn {fmt_sum(rv['online'])})",
+        f"To'lovlar: {fmt_sum(rv['total'])} (naqd {fmt_sum(rv['cash'])}, terminal {fmt_sum(rv['terminal'])})",
         f"Kassa: ochilish {fmt_sum(shift.opening_cash)}, kutilgan {fmt_sum(shift.expected_cash)}, sanalgan {fmt_sum(shift.counted_cash)}",
         ("✅ Farq yo'q" if not shift.diff else f"❗ Farq: {fmt_sum(shift.diff)}"),
     ]

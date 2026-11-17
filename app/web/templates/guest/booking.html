@@ -69,10 +69,8 @@
 
 {% if due_now > 0 and (b.guest_accepted_at or b.smartphoneless) and b.status in ("pending", "active") %}
   <section class="card">
-    <h2>{{ t("g.pay_title", lang) }} · {{ due_now|money(lang) }}</h2>
-    {% if pay_enabled.payme %}<a class="btn pay payme" href="/g/{{ b.guest_token }}/pay/payme">{{ t("g.pay_payme", lang) }}</a>{% endif %}
-    {% if pay_enabled.click %}<a class="btn pay click" href="/g/{{ b.guest_token }}/pay/click">{{ t("g.pay_click", lang) }}</a>{% endif %}
-    <p class="muted">{{ t("g.pay_cash", lang) }}</p>
+    <h2>{{ t("g.due", lang) }}: {{ due_now|money(lang) }}</h2>
+    <p>{{ t("g.pay_cash", lang) }}</p>
   </section>
 {% endif %}
 

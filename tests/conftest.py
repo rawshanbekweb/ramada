@@ -4,11 +4,6 @@ TEST_DB = os.environ.get("SQ_TEST_DATABASE_URL", "sqlite://")
 os.environ["SQ_DATABASE_URL"] = TEST_DB
 os.environ["SQ_SECRET_KEY"] = "test-secret-key-0123456789abcdef"
 os.environ["SQ_EDGE_SECRET"] = "edge-test-secret"
-os.environ["SQ_PAYME_MERCHANT_ID"] = "test-merchant"
-os.environ["SQ_PAYME_KEY"] = "payme-test-key"
-os.environ["SQ_CLICK_SERVICE_ID"] = "111"
-os.environ["SQ_CLICK_MERCHANT_ID"] = "222"
-os.environ["SQ_CLICK_SECRET_KEY"] = "click-secret"
 os.environ["SQ_BASE_URL"] = "https://hotel.test"
 os.environ["SQ_STORAGE_DIR"] = "/tmp/sq-test-storage"
 

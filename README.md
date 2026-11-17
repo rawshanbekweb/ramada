@@ -2,7 +2,7 @@
 
 Mehmonxonaga har bir joylashtirishni **uch mustaqil bosqichda** tasdiqlaydigan tizim (Nukus, TT v3.0):
 
-1. **Pul tasdig'i**: mehmon SMS'dagi havola orqali rasmiy narxni ko'radi, tasdiqlaydi va to'laydi (Payme/Click yoki fiskal chekli naqd/terminal).
+1. **Pul tasdig'i**: mehmon SMS'dagi havola orqali rasmiy narxni ko'radi, tasdiqlaydi; to'lovni reception qo'lda kiritadi (naqd yoki terminal, fiskal chek raqami majburiy).
 2. **Kirish tasdig'i**: to'lovdan keyin ochiladigan kirish oynasida koridor kamerasi (Hikvision NVR, ISAPI) shu xona eshigiga kelinganini qayd etadi.
 3. **Xonada tasdiq**: mehmon xonadagi imzolangan QR plitani skanerlab, «shu xonadaman, shu summani to'ladim» deydi va Wi-Fi parolini oladi.
 
@@ -17,7 +17,7 @@ Biror bosqich o'tmasa yoki bronsiz xonada faollik bo'lsa, ega Telegram orqali da
 | Ega veb-paneli | `app/web/panel.py`, `templates/panel/` | Ega, administrator |
 | Telegram bot | `app/bot/` | Reception, administrator, ega, farrosh |
 | Biznes-mantiq | `app/services/` | — |
-| Payme / Click / SMS / Telegram | `app/integrations/` | — |
+| SMS / Telegram | `app/integrations/` | — |
 | Rejalashtiruvchi (qoidalar, hisobotlar) | `app/worker.py`, `app/services/rules.py` | — |
 | Edge agent (NVR yonida) | `edge/agent.py` | Mehmonxonadagi mini-PC |
 | Migratsiyalar | `migrations/` | — |
@@ -59,14 +59,12 @@ Server O'zbekiston hududida joylashgan bo'lishi shart («Shaxsga doir ma'lumotla
 
 ## Asosiy sozlamalar
 
-- **Muhit** (`.env`, `SQ_` prefiksi bilan): baza, domen, Telegram tokeni, Payme/Click kalitlari, SMS, edge kaliti. Ro'yxat `.env.example` faylida.
+- **Muhit** (`.env`, `SQ_` prefiksi bilan): baza, domen, Telegram tokeni, SMS, edge kaliti. Ro'yxat `.env.example` faylida.
 - **Biznes sozlamalari** bazada saqlanadi va panelda o'zgartiriladi: kirish oynasi (10–120 daqiqa), chegirma chegarasi, Wi-Fi paroli, kirish/chiqish soatlari, erta/kech haqlari, hisobot soati va boshqalar.
 - **Tariflar** (toifa × kun turi × mavsum) faqat ega tomonidan panelda o'zgartiriladi; har bir o'zgarish jurnalga yoziladi.
 
-## Webhook manzillari
+## Tashqi manzillar
 
 | Tizim | URL |
 |---|---|
-| Payme Merchant API | `POST https://DOMEN/api/payme` |
-| Click Prepare / Complete | `POST https://DOMEN/api/click/prepare`, `/api/click/complete` |
 | Edge agent | `POST https://DOMEN/api/edge/events`, `/api/edge/heartbeat` (HMAC imzo bilan) |

@@ -1,4 +1,4 @@
-"""Tashqi tizimlar: Payme, Click va mehmonxonadagi edge agent (NVR hodisalari)."""
+"""Tashqi tizimlar: mehmonxonadagi edge agent (NVR hodisalari)."""
 from __future__ import annotations
 
 import base64
@@ -9,13 +9,11 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.db import get_db
-from app.integrations import click, payme
 from app.models import Camera, CameraZone
 from app.security import verify_edge_signature
 from app.services import entry
@@ -26,27 +24,6 @@ router = APIRouter(prefix="/api")
 @router.get("/health")
 def health():
     return {"ok": True}
-
-
-@router.post("/payme")
-async def payme_rpc(request: Request, db: Session = Depends(get_db)):
-    try:
-        body = await request.json()
-    except (json.JSONDecodeError, ValueError):
-        return JSONResponse({"id": None, "error": {"code": payme.E_PARSE, "message": "Parse error"}})
-    return JSONResponse(payme.rpc(db, request.headers.get("authorization"), body))
-
-
-@router.post("/click/prepare")
-async def click_prepare(request: Request, db: Session = Depends(get_db)):
-    form = dict(await request.form())
-    return JSONResponse(click.prepare(db, form))
-
-
-@router.post("/click/complete")
-async def click_complete(request: Request, db: Session = Depends(get_db)):
-    form = dict(await request.form())
-    return JSONResponse(click.complete(db, form))
 
 
 # ------------------------------------------------------------------ edge agent

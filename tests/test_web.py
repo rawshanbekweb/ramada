@@ -24,7 +24,7 @@ def test_guest_page_accept_and_device_binding(db, staff):
     r = other.get(f"/g/{b.guest_token}")
     assert "oxirgi 4" in r.text
     r = other.post(f"/g/{b.guest_token}/unlock", data={"last4": "4567"})
-    assert r.status_code == 200 and "Payme" in r.text
+    assert r.status_code == 200 and "receptionda" in r.text
 
 
 def test_qr_page_flow(db, staff):

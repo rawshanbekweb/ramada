@@ -12,7 +12,6 @@ from app.config import get_settings
 from app.db import get_db
 from app.enums import BookingStatus, QrAnswer
 from app.i18n import LANGS, pick_lang
-from app.integrations import click, payme
 from app.security import device_hash, new_device_id, sign_payload, unsign_payload
 from app.services import bookings, guestflow
 from app.services import settings_svc as cfg
@@ -83,10 +82,6 @@ def guest_page(token: str, request: Request, db: Session = Depends(get_db)):
     am = bookings.get_pending_amendment(db, b)
     due_now = bookings.amount_due_now(db, b)
     survey_done = b.status == BookingStatus.CHECKED_OUT and _has_survey(db, b)
-    pay_enabled = {
-        "payme": bool(get_settings().payme_merchant_id),
-        "click": bool(get_settings().click_service_id),
-    }
     resp = _render(
         request,
         "guest/booking.html",
@@ -95,7 +90,6 @@ def guest_page(token: str, request: Request, db: Session = Depends(get_db)):
             "b": b,
             "am": am,
             "due_now": due_now,
-            "pay_enabled": pay_enabled,
             "survey_done": survey_done,
             "survey_enabled": cfg.get(db, "survey_enabled"),
             "wifi": {"ssid": cfg.get(db, "wifi_ssid"), "password": cfg.get(db, "wifi_password")},
@@ -168,24 +162,6 @@ def guest_accept_amendment(token: str, request: Request, db: Session = Depends(g
         am = bookings.get_pending_amendment(db, b)
         if am is not None:
             bookings.guest_accept_amendment(db, b, am)
-    return RedirectResponse(f"/g/{token}", status_code=303)
-
-
-@router.get("/g/{token}/pay/{provider}")
-def guest_pay(token: str, provider: str, request: Request, db: Session = Depends(get_db)):
-    b, _ = _guarded(request, db, token)
-    if b is None:
-        return RedirectResponse(f"/g/{token}", status_code=303)
-    if b.status == BookingStatus.PENDING and b.guest_accepted_at is None:
-        return RedirectResponse(f"/g/{token}", status_code=303)
-    due = bookings.amount_due_now(db, b)
-    if due <= 0:
-        return RedirectResponse(f"/g/{token}", status_code=303)
-    return_url = f"{get_settings().base_url.rstrip('/')}/g/{token}"
-    if provider == "payme" and get_settings().payme_merchant_id:
-        return RedirectResponse(payme.checkout_url(b, due, return_url), status_code=303)
-    if provider == "click" and get_settings().click_service_id:
-        return RedirectResponse(click.checkout_url(b, due, return_url), status_code=303)
     return RedirectResponse(f"/g/{token}", status_code=303)
 
 

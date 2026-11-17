@@ -21,8 +21,8 @@ Har bir funksional talab kodning qaysi joyida bajarilgani va qaysi test bilan te
 | FT-10 | `services/pricing.py`; panel → Tariflar (faqat ega, audit) | test_flows::test_pricing |
 | FT-11 | `services/discounts.py`: chegaradan kichigini administrator, kattasini ega tasdiqlaydi, 10 daqiqada javob bo'lmasa rad etiladi | test_flows::test_discount |
 | FT-12 | `pricing.early_checkin_line`, `late_checkout_line` | test_flows::test_checkout_with_late_fee |
-| FT-13 | `integrations/payme.py`, `click.py`; summa mos kelmasa rad etiladi | test_payments |
-| FT-14 | `bookings.record_payment`: chek raqami majburiy | test_acceptance 1 |
+| FT-13 | **Chiqarildi** (buyurtmachi qarori, 17.11.2026): Payme/Click ishlatilmaydi, to'lovlar reception tomonidan qo'lda kiritiladi. Summa tarifdan kam bo'lsa bron 1/3 ga o'tmaydi (R8) | test_acceptance 2 |
+| FT-14 | `bookings.record_payment`: faqat naqd/terminal, chek raqami va ochiq smena majburiy | test_acceptance 1 |
 | FT-15 | `services/shifts.py`: ko'r hisob, smena qabulidagi farq | test_acceptance 11 |
 
 ## Mehmon sahifasi (7.3)

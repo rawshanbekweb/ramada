@@ -337,18 +337,16 @@ def record_payment(
         raise BookingError("Summa musbat bo'lishi kerak")
     if not booking.is_open:
         raise BookingError("Bron yopilgan")
-    shift = None
-    if method in (PaymentMethod.CASH, PaymentMethod.TERMINAL):
-        if not receipt_no or not receipt_no.strip():
-            raise BookingError("Fiskal chek raqami majburiy (FT-14)")
-        if user is None:
-            raise BookingError("Naqd/terminal to'lovni xodim kiritadi")
-        shift = shifts.current_shift(db, user)
-        if shift is None:
-            raise BookingError("Naqd/terminal to'lov uchun smena ochiq bo'lishi kerak")
-    else:
-        open_shift = shifts.any_open_shift(db)
-        shift = open_shift
+    # To'lovlar faqat qo'lda: reception naqd yoki terminal to'lovini fiskal chek raqami bilan kiritadi
+    if method not in (PaymentMethod.CASH, PaymentMethod.TERMINAL):
+        raise BookingError("To'lov usuli: naqd yoki terminal")
+    if not receipt_no or not receipt_no.strip():
+        raise BookingError("Fiskal chek raqami majburiy (FT-14)")
+    if user is None:
+        raise BookingError("To'lovni xodim kiritadi")
+    shift = shifts.current_shift(db, user)
+    if shift is None:
+        raise BookingError("To'lov kiritish uchun smena ochiq bo'lishi kerak")
     pending_amendment = get_pending_amendment(db, booking)
     p = Payment(
         booking_id=booking.id,

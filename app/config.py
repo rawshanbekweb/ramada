@@ -29,18 +29,6 @@ class Settings(BaseSettings):
     sms_eskiz_password: str = ""
     sms_eskiz_from: str = "4546"
 
-    # Payme (Merchant API)
-    payme_merchant_id: str = ""
-    payme_key: str = ""
-    payme_checkout_url: str = "https://checkout.paycom.uz"
-
-    # Click (SHOP API)
-    click_service_id: str = ""
-    click_merchant_id: str = ""
-    click_merchant_user_id: str = ""
-    click_secret_key: str = ""
-    click_checkout_url: str = "https://my.click.uz/services/pay"
-
     # Edge agent (mehmonxonadagi NVR yonidagi kichik kompyuter)
     edge_secret: str = "change-me-edge-secret"
 

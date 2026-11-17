@@ -11,7 +11,7 @@
   <h2>{{ d.day|d }}</h2>
   <div class="tiles">
     <div class="tile"><div class="k">Bandlik (tun)</div><div class="v">{{ d.occupancy }}/{{ d.rooms }}</div><div class="s">{{ d.occupancy_pct }}%</div></div>
-    <div class="tile"><div class="k">Tushum</div><div class="v">{{ d.revenue.total|sum }}</div><div class="s">onlayn {{ d.revenue.online|sum }} · naqd {{ d.revenue.cash|sum }} · terminal {{ d.revenue.terminal|sum }}</div></div>
+    <div class="tile"><div class="k">Tushum</div><div class="v">{{ d.revenue.total|sum }}</div><div class="s">naqd {{ d.revenue.cash|sum }} · terminal {{ d.revenue.terminal|sum }}</div></div>
     <div class="tile"><div class="k">3/3 ulushi</div><div class="v">{{ d.stages.full_pct if d.stages.full_pct is not none else "—" }}%</div><div class="s">{{ d.stages.s3 }}/{{ d.stages.total }}</div></div>
     <div class="tile"><div class="k">ADR</div><div class="v">{{ d.adr|sum }}</div><div class="s">kirish sanog'i {{ d.entrances }} / joylashtirish {{ d.checkins }}</div></div>
   </div>

@@ -261,36 +261,6 @@ class Payment(Base):
     booking: Mapped[Booking] = relationship(back_populates="payments")
 
 
-class PaymeTransaction(Base):
-    __tablename__ = "payme_transactions"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    paycom_id: Mapped[str] = mapped_column(String(50), unique=True)
-    paycom_time: Mapped[int] = mapped_column(BigInteger)
-    amount: Mapped[int] = mapped_column(BigInteger)  # tiyin
-    booking_id: Mapped[int] = mapped_column(ForeignKey("bookings.id"), index=True)
-    amendment_id: Mapped[int | None] = mapped_column(ForeignKey("amendments.id"))
-    state: Mapped[int] = mapped_column(Integer, default=1)
-    reason: Mapped[int | None] = mapped_column(Integer)
-    create_time: Mapped[int] = mapped_column(BigInteger)
-    perform_time: Mapped[int] = mapped_column(BigInteger, default=0)
-    cancel_time: Mapped[int] = mapped_column(BigInteger, default=0)
-    payment_id: Mapped[int | None] = mapped_column(ForeignKey("payments.id"))
-
-
-class ClickTransaction(Base):
-    __tablename__ = "click_transactions"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    click_trans_id: Mapped[str] = mapped_column(String(50), unique=True)
-    click_paydoc_id: Mapped[str | None] = mapped_column(String(50))
-    merchant_trans_id: Mapped[str] = mapped_column(String(50))
-    booking_id: Mapped[int] = mapped_column(ForeignKey("bookings.id"), index=True)
-    amendment_id: Mapped[int | None] = mapped_column(ForeignKey("amendments.id"))
-    amount: Mapped[int] = mapped_column(Integer)
-    status: Mapped[str] = mapped_column(String(20), default="prepared")  # prepared/paid/cancelled
-    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=_now)
-    payment_id: Mapped[int | None] = mapped_column(ForeignKey("payments.id"))
-
-
 class Discount(Base):
     __tablename__ = "discounts"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -521,7 +491,7 @@ class AuditLog(Base):
 
     __tablename__ = "audit_log"
     id: Mapped[int] = mapped_column(primary_key=True)
-    actor: Mapped[str] = mapped_column(String(80))  # "user:5", "guest", "system", "payme"...
+    actor: Mapped[str] = mapped_column(String(80))  # "user:5", "guest", "system", "camera"...
     action: Mapped[str] = mapped_column(String(60), index=True)
     object_type: Mapped[str | None] = mapped_column(String(40))
     object_id: Mapped[str | None] = mapped_column(String(40))
