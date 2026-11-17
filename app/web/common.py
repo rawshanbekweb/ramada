@@ -27,3 +27,22 @@ STATUS_UZ = {"pending": "Kutilmoqda", "active": "Yashamoqda", "checked_out": "Ch
 ROOM_STATE_UZ = {"clean": "Toza", "dirty": "Iflos", "cleaning": "Tozalanmoqda", "out_of_order": "Ishlamaydi"}
 ROLE_UZ = {"owner": "Ega", "admin": "Administrator", "reception": "Reception", "housekeeper": "Farrosh"}
 env.globals.update(STATUS_UZ=STATUS_UZ, ROOM_STATE_UZ=ROOM_STATE_UZ, ROLE_UZ=ROLE_UZ)
+
+
+def _hotel_name() -> str:
+    from app.db import SessionLocal
+    from app.services import settings_svc as cfg
+
+    with SessionLocal() as s:
+        return cfg.get(s, "hotel_name")
+
+
+def _calibration_on() -> bool:
+    from app.db import SessionLocal
+    from app.services import entry
+
+    with SessionLocal() as s:
+        return entry.calibration_active(s)
+
+
+env.globals.update(hotel_name=_hotel_name, calibration_on=_calibration_on)

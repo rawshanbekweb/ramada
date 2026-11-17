@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.models import Setting, SystemState
 
 DEFAULTS: dict[str, Any] = {
-    "hotel_name": "Mehmonxona",
+    "hotel_name": "Ramada",
     "hotel_phone": "+998 61 000 00 00",
     "entry_window_minutes": 30,  # FT-32: 10..120
     "discount_auto_limit_percent": 10,  # shundan kichik chegirmani administrator tasdiqlaydi
@@ -33,6 +33,12 @@ DEFAULTS: dict[str, Any] = {
     "underpaid_grace_minutes": 15,  # R8: qisman to'lovdan keyin shuncha kutiladi
     "r11_threshold_pp": 15,  # R11: o'rtachadan shuncha foiz-punkt farq
     "r11_min_bookings": 5,
+    # Kamera (2-bosqich va bronsiz faollik)
+    "corroboration_minutes": 3,  # bitta qisqa hodisa shuncha vaqt ichida tasdiqlanmasa — o'rta daraja
+    "repeat_window_seconds": 90,  # shu oraliqda bir eshikda 2+ hodisa — «kuchli» dalil
+    "clock_skew_limit_seconds": 120,  # NVR soati shundan ko'p farq qilsa — edge vaqti ishlatiladi
+    "camera_silence_hours": 24,  # kamera shuncha soat hodisa bermasa — R12
+    "calibration_until": None,  # zona sozlash rejimi (ISO vaqt) — R2/R3 vaqtincha o'chadi
     "keyboard_check_enabled": True,  # FT-46
     "survey_enabled": True,
 }

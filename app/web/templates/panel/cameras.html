@@ -1,0 +1,84 @@
+{% extends "panel/base.html" %}
+{% block title %}Kameralar{% endblock %}
+{% block content %}
+<h1>Kameralar</h1>
+
+<div class="tiles">
+  <div class="tile {{ '' if edge.online else 'bad' }}"><div class="k">Edge agent</div>
+    <div class="v">{{ "Aloqa bor" if edge.online else "Aloqa yo'q" }}</div>
+    <div class="s">oxirgi: {{ edge.last|dt }} · navbat: {{ edge.queue }} · to'liq sinxron: {{ edge.synced|dt }}</div></div>
+  <div class="tile {{ '' if edge.nvr_ok else 'bad' }}"><div class="k">NVR hodisalar oqimi</div>
+    <div class="v">{{ "Ulangan" if edge.nvr_ok else "Uzilgan" }}</div><div class="s">hodisalar edge orqali keladi</div></div>
+  <div class="tile {{ 'bad' if edge.cams_offline else '' }}"><div class="k">Muammoli kameralar</div>
+    <div class="v">{{ edge.cams_offline|length }}</div>
+    <div class="s">{% for c in edge.cams_offline %}{{ c.name }}{{ " (yopilgan)" if c.tampered else " (oflayn)" }} {% else %}yo'q{% endfor %}</div></div>
+</div>
+
+<section class="card">
+  <h2>Kameralar holati (24 soat)</h2>
+  <table class="tbl">
+    <tr><th>Kanal</th><th>Nomi</th><th>Holat</th><th>Eshiklar</th><th>Oxirgi hodisa</th><th>Hodisalar 24 soat</th><th>Kuzatuv</th><th>Noto'g'ri signal (30 kun)</th></tr>
+    {% for r in health %}{% set c = r.cam %}
+    <tr>
+      <td>{{ c.channel }}</td><td>{{ c.name }}{% if r.entrance %} · <span class="pill">asosiy kirish</span>{% endif %}</td>
+      <td>{% if c.tampered %}<span class="pill bad">yopilgan / signal yo'q</span>{% elif c.online is sameas false %}<span class="pill bad">oflayn</span>{% elif c.online %}<span class="pill ok">onlayn</span>{% else %}<span class="pill">noma'lum</span>{% endif %}</td>
+      <td>{{ r.doors }}</td><td>{{ c.last_event_at|dt }}</td><td>{{ r.events_24h }}</td>
+      <td>{{ r.coverage_pct }}%<div class="bar"><i style="width:{{ r.coverage_pct }}%"></i></div></td>
+      <td class="{{ 'warn' if r.false_positives_30d >= 3 }}">{{ r.false_positives_30d }}{% if r.false_positives_30d >= 3 %} — NVR'da hudud yoki sezgirlikni sozlang{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p class="muted">Kuzatuv — oxirgi 24 soatda kamera ishlagan vaqt ulushi. Uzilish davridagi kirish oynalari uchun R1 berilmaydi, 2-bosqich «tekshirib bo'lmadi» deb belgilanadi.</p>
+</section>
+
+{% if user.role == "owner" %}
+<section class="card {{ 'warnbox' if calibration_until }}">
+  <h2>🛠 Zona sozlash rejimi (audit)</h2>
+  <p class="muted">Har bir eshik oldida turib ko'ring: kelgan hodisa pastda chiqadi. Bog'lanmagan (kanal, hudud) juftligini shu yerning o'zida xonaga bog'lang. Rejim yoqilganda bronsiz xonadagi harakat ogohlantirilmaydi va u 4 soatdan keyin o'zi o'chadi. Sahifa har 5 soniyada yangilanadi.</p>
+  {% if calibration_until %}
+    <p><b>Yoqilgan:</b> {{ calibration_until|time }} gacha.</p>
+    <form method="post" action="/panel/cameras/calibration" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="hours" value="0"><button class="btn sm danger">O'chirish</button></form>
+  {% else %}
+    <form method="post" action="/panel/cameras/calibration" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <select name="hours"><option value="1">1 soat</option><option value="2" selected>2 soat</option><option value="4">4 soat</option></select>
+      <button class="btn sm">Yoqish</button></form>
+  {% endif %}
+
+  <h3>Bog'lanmagan hududlar (24 soat)</h3>
+  <table class="tbl"><tr><th>Kanal</th><th>Hudud / chiziq ID</th><th>Hodisalar</th><th>Oxirgi</th><th>Bog'lash</th></tr>
+  {% for u in unmapped %}
+    <tr><td>{{ u.channel }}{% if cams.get(u.channel) %} · {{ cams[u.channel].name }}{% endif %}</td><td>{{ u.region_id }}</td><td>{{ u.count }}</td><td>{{ u.last|dt }}</td>
+    <td><form method="post" action="/panel/cameras/bind" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="channel" value="{{ u.channel }}"><input type="hidden" name="region_id" value="{{ u.region_id }}">
+      <select name="kind"><option value="door">eshik</option><option value="entrance">asosiy kirish</option></select>
+      <select name="room_id"><option value="">—</option>{% for r in all_rooms %}<option value="{{ r.id }}">{{ r.number }}</option>{% endfor %}</select>
+      <button class="btn sm">Bog'lash</button></form></td></tr>
+  {% else %}<tr><td colspan="5" class="muted">Yo'q — barcha hodisalar xonalarga bog'langan</td></tr>{% endfor %}
+  </table>
+</section>
+{% endif %}
+
+<div class="grid2">
+<section class="card">
+  <h2>Oxirgi hodisalar</h2>
+  <table class="tbl"><tr><th>Vaqt</th><th>Kanal/hudud</th><th>Xona</th><th>Turi</th><th>Dalil</th><th>Xulosa</th></tr>
+  {% for e in recent %}
+    <tr><td><a href="/panel/events/{{ e.id }}">{{ e.occurred_at|time }}</a></td><td>{{ e.channel if e.channel is not none else "—" }}/{{ e.region_id if e.region_id is not none else "—" }}</td>
+    <td>{{ rooms.get(e.room_id, "—") }}</td><td>{{ e.event_type }}{% if e.target %} · {{ e.target }}{% endif %}</td>
+    <td>{% if e.strength == "strong" %}<span class="pill ok">kuchli</span>{% elif e.strength == "weak" %}<span class="pill warn">kuchsiz</span>{% endif %}</td>
+    <td>{{ e.verdict or "" }}</td></tr>
+  {% endfor %}
+  </table>
+  <p><a href="/panel/events">Barcha hodisalar →</a></p>
+</section>
+<section class="card">
+  <h2>Kuzatuv uzilishlari</h2>
+  <table class="tbl"><tr><th>Kanal</th><th>Sabab</th><th>Boshlandi</th><th>Tugadi</th></tr>
+  {% for g in gaps %}<tr><td>{{ g.channel if g.channel is not none else "butun NVR" }}</td>
+    <td>{{ {"stream": "NVR oqimi uzildi", "channel_offline": "kamera oflayn", "videoloss": "videosignal yo'q", "tamper": "kamera yopilgan"}.get(g.source, g.source) }}</td>
+    <td>{{ g.start_at|dt }}</td><td>{% if g.end_at %}{{ g.end_at|dt }}{% else %}<b class="err">davom etmoqda</b>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="4" class="muted">Yo'q</td></tr>{% endfor %}
+  </table>
+</section>
+</div>
+{% endblock %}

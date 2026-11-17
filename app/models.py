@@ -331,6 +331,10 @@ class Camera(Base):
     name: Mapped[str] = mapped_column(String(80))
     channel: Mapped[int] = mapped_column(Integer, unique=True)  # NVR kanali
     floor: Mapped[int | None] = mapped_column(Integer)
+    online: Mapped[bool | None] = mapped_column(Boolean)  # NVR kanal holati (edge xabar beradi)
+    status_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    last_event_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    tampered: Mapped[bool] = mapped_column(Boolean, default=False)  # yopilgan / signal yo'q
 
 
 class CameraZone(Base):
@@ -362,8 +366,29 @@ class ZoneEvent(Base):
     video_link: Mapped[str | None] = mapped_column(String(500))
     snapshot_path: Mapped[str | None] = mapped_column(String(255))
     edge_event_id: Mapped[str | None] = mapped_column(String(80), unique=True)
-    verdict: Mapped[str | None] = mapped_column(String(40))  # entered/normal/cleaning/R2/R3...
+    verdict: Mapped[str | None] = mapped_column(String(40))  # entered/occupied/cleaning/R2/R2?/R3...
     raw: Mapped[dict | None] = mapped_column(JSON)
+    channel: Mapped[int | None] = mapped_column(Integer)  # xom NVR kanali (zona bog'lanmagan bo'lsa ham)
+    region_id: Mapped[int | None] = mapped_column(Integer)
+    target: Mapped[str | None] = mapped_column(String(20))  # human / vehicle (AcuSense)
+    strength: Mapped[str | None] = mapped_column(String(10))  # strong / weak
+    state: Mapped[str | None] = mapped_column(String(10))  # health hodisalari: active / inactive
+    skew_s: Mapped[int | None] = mapped_column(Integer)  # NVR soati farqi, soniya
+
+
+class CoverageGap(Base):
+    """Kamera kuzatuvi bo'lmagan davr: NVR oqimi uzilgan, kanal oflayn, kamera yopilgan.
+
+    channel = NULL — butun NVR. Shu davrga to'g'ri kelgan kirish oynasi uchun R1 berilmaydi,
+    2-bosqich «tekshirib bo'lmadi» deb belgilanadi.
+    """
+
+    __tablename__ = "coverage_gaps"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    channel: Mapped[int | None] = mapped_column(Integer, index=True)
+    source: Mapped[str] = mapped_column(String(20))  # stream / channel_offline / videoloss / tamper
+    start_at: Mapped[datetime] = mapped_column(UTCDateTime, index=True)
+    end_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
 
 
 class QrScan(Base):

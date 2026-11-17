@@ -26,8 +26,10 @@ def test_extract_and_parse_partial_stream():
     docs = extract_alerts(buf)
     assert len(docs) == 2  # uchinchisi hali to'liq kelmagan
     events = [e for e in (parse_alert(d) for d in docs) if e]
-    assert events == [{"channel": 2, "region_id": 4, "event_type": "regionEntrance",
-                       "occurred_at": "2026-12-15T15:01:00+05:00"}]
+    assert events[0] == {"channel": 2, "region_id": 4, "event_type": "regionEntrance",
+                         "occurred_at": "2026-12-15T15:01:00+05:00"}
+    # videoloss — sog'liq hodisasi, holati bilan (agent faqat o'zgarishni yuboradi)
+    assert events[1]["event_type"] == "videoloss" and events[1]["state"] == "inactive"
     buf.extend(b"ificationAlert>")
     third = extract_alerts(buf)
     assert parse_alert(third[0])["event_type"] == "linedetection"
@@ -43,3 +45,23 @@ def test_queue_persistence(tmp_path):
     assert [e["id"] for e in q2.peek(10)] == ["a", "b"]
     q2.ack(["a"])
     assert q2.size() == 1
+
+
+def test_gap_tracking_and_target(tmp_path):
+    from edge.agent import parse_alert as pa
+
+    q = Queue(str(tmp_path / "q.db"))
+    q.gap_open("2026-12-15T10:00:00+00:00")
+    q.gap_open("2026-12-15T10:00:00+00:00")  # takror — bitta yozuv
+    assert q.gaps(since_hours=10**6) == [{"start": "2026-12-15T10:00:00+00:00", "end": None}]
+    q.gap_close("2026-12-15T10:05:00+00:00")
+    assert q.gaps(since_hours=10**6)[0]["end"] == "2026-12-15T10:05:00+00:00"
+    xml = (b'<EventNotificationAlert><channelID>3</channelID><dateTime>2026-12-15T15:00:00+05:00</dateTime>'
+           b'<eventType>fielddetection</eventType><eventState>active</eventState><DetectionRegionList>'
+           b'<DetectionRegionEntry><regionID>7</regionID><detectionTarget>human</detectionTarget>'
+           b'</DetectionRegionEntry></DetectionRegionList></EventNotificationAlert>')
+    ev = pa(xml)
+    assert ev["region_id"] == 7 and ev["target"] == "human"
+    tamper = pa(b'<EventNotificationAlert><channelID>2</channelID><eventType>shelteralarm</eventType>'
+                b'<eventState>active</eventState></EventNotificationAlert>')
+    assert tamper["state"] == "active" and tamper["channel"] == 2

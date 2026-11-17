@@ -285,6 +285,14 @@ def event_view(eid: int, request: Request, user: User = Depends(current_user), d
     room = db.get(Room, ev.room_id) if ev.room_id else None
     t0 = ev.occurred_at - timedelta(seconds=20)
     t1 = ev.occurred_at + timedelta(seconds=40)
+    nearby = []
+    if ev.room_id or ev.channel is not None:
+        q = select(ZoneEvent).where(
+            ZoneEvent.occurred_at >= ev.occurred_at - timedelta(minutes=10),
+            ZoneEvent.occurred_at <= ev.occurred_at + timedelta(minutes=10),
+        )
+        q = q.where(ZoneEvent.room_id == ev.room_id) if ev.room_id else q.where(ZoneEvent.channel == ev.channel)
+        nearby = db.scalars(q.order_by(ZoneEvent.occurred_at)).all()
     rtsp = None
     if cam is not None:
         rtsp = (
@@ -292,7 +300,7 @@ def event_view(eid: int, request: Request, user: User = Depends(current_user), d
             f"starttime={t0:%Y%m%dT%H%M%SZ}&endtime={t1:%Y%m%dT%H%M%SZ}"
         )
     audit.log(db, audit.actor_of(user), "event.view", ev)
-    return render(request, "event.html", ev=ev, cam=cam, room=room, rtsp=rtsp)
+    return render(request, "event.html", ev=ev, cam=cam, room=room, rtsp=rtsp, nearby=nearby)
 
 
 @router.get("/events/{eid}/snapshot")
@@ -304,6 +312,65 @@ def event_snapshot(eid: int, user: User = Depends(current_user), db: Session = D
     if Path(get_settings().storage_dir).resolve() not in path.parents or not path.exists():
         raise HTTPException(404)
     return FileResponse(path, media_type="image/jpeg")
+
+
+@router.get("/cameras", response_class=HTMLResponse)
+def cameras_page(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    from app.models import CoverageGap
+
+    gaps = db.scalars(select(CoverageGap).order_by(CoverageGap.start_at.desc()).limit(30)).all()
+    recent = db.scalars(select(ZoneEvent).order_by(ZoneEvent.id.desc()).limit(40)).all()
+    rooms = {r.id: r.number for r in db.scalars(select(Room))}
+    all_rooms = db.scalars(select(Room).where(Room.active.is_(True)).order_by(Room.floor, Room.number)).all()
+    cams = {c.channel: c for c in db.scalars(select(Camera))}
+    until = cfg.get(db, "calibration_until")
+    return render(
+        request, "cameras.html", health=entry.camera_health_rows(db), edge=entry.edge_status(db), gaps=gaps,
+        recent=recent, rooms=rooms, all_rooms=all_rooms, cams=cams, unmapped=entry.unmapped_regions(db),
+        calibration_until=entry._parse_dt(until) if entry.calibration_active(db) else None,
+        refresh=entry.calibration_active(db),
+    )
+
+
+@router.post("/cameras/calibration", dependencies=[Depends(check_csrf)])
+def calibration_toggle(hours: int = Form(0), user: User = Depends(owner_only), db: Session = Depends(get_db)):
+    """Zona sozlash rejimi: eshiklarni bittalab sinash paytida R2/R3 o'chadi (ko'pi bilan 4 soat)."""
+    hours = max(0, min(4, hours))
+    value = (clock.now() + timedelta(hours=hours)).isoformat() if hours else None
+    old, _ = cfg.set_value(db, "calibration_until", value)
+    audit.log(db, audit.actor_of(user), "camera.calibration", object_type="settings", object_id="calibration_until",
+              old={"value": old}, new={"value": value})
+    return back("/panel/cameras")
+
+
+@router.post("/cameras/bind", dependencies=[Depends(check_csrf)])
+def camera_bind(
+    channel: int = Form(...), region_id: int = Form(...), kind: str = Form("door"), room_id: str = Form(""),
+    user: User = Depends(owner_only), db: Session = Depends(get_db),
+):
+    """Sozlash rejimida kelgan bog'lanmagan (kanal, hudud) ni xonaga bog'lash; kamera yo'q bo'lsa yaratiladi."""
+    cam = db.scalar(select(Camera).where(Camera.channel == channel))
+    if cam is None:
+        cam = Camera(name=f"Kanal {channel}", channel=channel)
+        db.add(cam)
+        db.flush()
+    rid = int(room_id) if room_id else None
+    z = db.scalar(select(CameraZone).where(CameraZone.camera_id == cam.id, CameraZone.region_id == region_id, CameraZone.kind == kind))
+    old = {"room": z.room_id} if z else None
+    if z is None:
+        z = CameraZone(camera_id=cam.id, region_id=region_id, kind=kind, room_id=rid)
+        db.add(z)
+    else:
+        z.room_id = rid
+    db.flush()
+    # Shu juftlikning avvalgi hodisalari ham endi xonaga tegishli (tarix uchun)
+    for ev in db.scalars(select(ZoneEvent).where(ZoneEvent.channel == channel, ZoneEvent.region_id == region_id,
+                                                 ZoneEvent.kind == "unmapped")):
+        ev.zone_id, ev.camera_id, ev.kind = z.id, cam.id, kind
+        ev.room_id = rid if kind == ZoneKind.DOOR else None
+        ev.verdict = "calibration"
+    audit.log(db, audit.actor_of(user), "zone.save", z, old=old, new={"channel": channel, "region": region_id, "kind": kind, "room": rid})
+    return back("/panel/cameras")
 
 
 @router.get("/events", response_class=HTMLResponse)
@@ -554,6 +621,11 @@ SETTING_FIELDS = [
     ("morning_check_hour", "Farrosh tekshiruvi muddati, soat", "int"),
     ("daily_report_hour", "Kunlik hisobot soati", "int"),
     ("nvr_offline_minutes", "NVR aloqasi uzilishi chegarasi, daqiqa", "int"),
+    ("corroboration_minutes", "Kamera: bitta qisqa hodisani tasdiqlash kutish vaqti, daqiqa", "int"),
+    ("repeat_window_seconds", "Kamera: takroriy hodisa oralig'i (kuchli dalil), soniya", "int"),
+    ("clock_skew_limit_seconds", "Kamera: NVR soati farqi chegarasi, soniya", "int"),
+    ("camera_silence_hours", "Kamera: hodisasiz qolish chegarasi, soat", "int"),
+    ("edge_unverifiable_hours", "Edge aloqasiz bo'lsa «tekshirib bo'lmadi» deyish, soat", "int"),
     ("checkout_grace_minutes", "Chiqishdan keyingi bag'rikenglik, daqiqa", "int"),
     ("underpaid_grace_minutes", "Kam to'lov (R8) kutish, daqiqa", "int"),
     ("r11_threshold_pp", "R11: o'rtachadan farq, foiz-punkt", "int"),

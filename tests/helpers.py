@@ -33,13 +33,14 @@ def accept_and_pay_cash(db, b, user, amount=None, receipt="CHK-1", device=None):
     db.commit()
 
 
-def door_event(db, number, minutes_from_now=1, eid=None):
+def door_event(db, number, minutes_from_now=1, eid=None, event_type="fielddetection", **kw):
+    """Eshik zonasidagi hodisa. Sukut bo'yicha intrusion (odam eshik oldida turdi) — kuchli dalil."""
     r = room(db, number)
     floor = r.floor
     region = int(number[1:])
     at = clock.now() + timedelta(minutes=minutes_from_now)
-    ev = entry.ingest_event(db, channel=floor, region_id=region, event_type="regionEntrance",
-                            occurred_at=at, edge_event_id=eid)
+    ev = entry.ingest_event(db, channel=floor, region_id=region, event_type=event_type,
+                            occurred_at=at, edge_event_id=eid, **kw)
     db.commit()
     return ev
 

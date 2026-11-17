@@ -4,12 +4,20 @@ Vazifasi:
   1. Hikvision NVR'ning ISAPI hodisalar oqimiga ulanadi
      (GET /ISAPI/Event/notification/alertStream, Digest auth).
   2. «hududga kirish» (regionEntrance), «chiziq kesish» (linedetection) va
-     «bostirib kirish» (fielddetection) hodisalarini ajratib oladi.
-  3. Ixtiyoriy: hodisa paytidagi kadrni (snapshot) oladi.
-  4. Hodisalarni lokal SQLite navbatiga yozadi va serverga HMAC imzo bilan
+     «bostirib kirish» (fielddetection) hodisalarini ajratib oladi; AcuSense
+     kameralari bergan nishon turini (human/vehicle) ham uzatadi.
+  3. Kamera sog'lig'i: «videoloss» va «shelteralarm» (kamera yopildi) hodisalari
+     faqat holat o'zgarganda yuboriladi; har daqiqada kanallar holati
+     (/ISAPI/ContentMgmt/InputProxy/channels/status) so'raladi.
+  4. NVR oqimi uzilgan davrlarni (va agentning o'zi ishlamagan davrni) qayd etib,
+     serverga yuboradi — shu davrdagi kirish oynalari uchun noto'g'ri R1 chiqmaydi.
+  5. Har bir hodisaga edge (NTP) qabul vaqtini qo'shadi — NVR soati adashsa ham
+     server to'g'ri vaqtni ishlatadi.
+  6. Ixtiyoriy: hodisa paytidagi kadrni (snapshot) oladi.
+  7. Hodisalarni lokal SQLite navbatiga yozadi va serverga HMAC imzo bilan
      paketlab yuboradi. Internet uzilsa — navbatda saqlanadi, ulanganda
      yuboriladi (TT 6.6, 16-bo'lim 12-sinov).
-  5. Har daqiqada heartbeat yuboradi (FT-36: 15 daqiqa aloqa yo'q — R12).
+  8. Har daqiqada heartbeat yuboradi (FT-36: 15 daqiqa aloqa yo'q — R12).
 
 NVR internetga ochilmaydi (TT 14-bo'lim): agent faqat lokal tarmoqda NVR'ga
 ulanadi va serverga chiquvchi HTTPS orqali ishlaydi.
@@ -38,10 +46,14 @@ from xml.etree import ElementTree as ET
 import httpx
 
 log = logging.getLogger("edge")
-VERSION = "1.0"
+VERSION = "1.1"
 
 ALERT_RE = re.compile(rb"<EventNotificationAlert[\s\S]*?</EventNotificationAlert>")
 INTERESTING = {"regionentrance", "linedetection", "fielddetection", "regionexiting"}
+HEALTH = {"videoloss", "shelteralarm"}
+CHANNEL_STATUS_RE = re.compile(
+    rb"<InputProxyChannelStatus[^>]*>[\s\S]*?<id>(\d+)</id>[\s\S]*?<online>(true|false)</online>[\s\S]*?</InputProxyChannelStatus>"
+)
 
 
 @dataclass
@@ -87,8 +99,9 @@ def parse_alert(xml_bytes: bytes) -> dict | None:
         elif text and name not in flat:
             flat[name] = text
     etype = flat.get("eventType", "")
-    state = flat.get("eventState", "active")
-    if etype.lower() not in INTERESTING or state.lower() != "active":
+    state = flat.get("eventState", "active").lower()
+    is_health = etype.lower() in HEALTH
+    if not is_health and (etype.lower() not in INTERESTING or state != "active"):
         return None
     channel = flat.get("channelID") or flat.get("dynChannelID") or "0"
     try:
@@ -102,12 +115,23 @@ def parse_alert(xml_bytes: bytes) -> dict | None:
         occurred = datetime.now(timezone.utc)
     if occurred.tzinfo is None:
         occurred = occurred.astimezone()
-    return {
+    out = {
         "channel": channel_i,
-        "region_id": regions[0] if regions else 1,
+        "region_id": regions[0] if regions else (0 if is_health else 1),
         "event_type": etype,
         "occurred_at": occurred.isoformat(),
     }
+    if is_health:
+        out["state"] = state
+    target = flat.get("targetType") or flat.get("detectionTarget")
+    if target:
+        out["target"] = target.lower()
+    return out
+
+
+def parse_channel_status(xml_bytes: bytes) -> dict[str, bool]:
+    """/ISAPI/ContentMgmt/InputProxy/channels/status javobidan {kanal: onlayn}."""
+    return {m.group(1).decode(): m.group(2) == b"true" for m in CHANNEL_STATUS_RE.finditer(xml_bytes)}
 
 
 def extract_alerts(buffer: bytearray) -> list[bytes]:
@@ -131,6 +155,32 @@ class Queue:
         self.conn.execute(
             "CREATE TABLE IF NOT EXISTS q (id TEXT PRIMARY KEY, payload TEXT NOT NULL, created REAL NOT NULL)"
         )
+        self.conn.execute("CREATE TABLE IF NOT EXISTS gaps (start TEXT PRIMARY KEY, end TEXT)")
+        self.conn.execute("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)")
+        self.conn.commit()
+
+    # --- kuzatuv uzilishlari (NVR oqimi yo'q yoki agent ishlamagan davrlar)
+    def gap_open(self, start: str) -> None:
+        self.conn.execute("INSERT OR IGNORE INTO gaps (start, end) VALUES (?, NULL)", (start,))
+        self.conn.commit()
+
+    def gap_close(self, end: str) -> None:
+        self.conn.execute("UPDATE gaps SET end = ? WHERE end IS NULL", (end,))
+        self.conn.commit()
+
+    def gaps(self, since_hours: int = 48) -> list[dict]:
+        cutoff = datetime.fromtimestamp(time.time() - since_hours * 3600, timezone.utc).isoformat()
+        rows = self.conn.execute(
+            "SELECT start, end FROM gaps WHERE end IS NULL OR end >= ? ORDER BY start", (cutoff,)
+        ).fetchall()
+        return [{"start": s, "end": e} for s, e in rows]
+
+    def meta_get(self, k: str) -> str | None:
+        row = self.conn.execute("SELECT v FROM meta WHERE k = ?", (k,)).fetchone()
+        return row[0] if row else None
+
+    def meta_set(self, k: str, v: str) -> None:
+        self.conn.execute("INSERT OR REPLACE INTO meta (k, v) VALUES (?, ?)", (k, v))
         self.conn.commit()
 
     def put(self, event: dict) -> None:
@@ -152,6 +202,10 @@ class Queue:
         return self.conn.execute("SELECT COUNT(*) FROM q").fetchone()[0]
 
 
+def now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
 # ------------------------------------------------------------------ server client
 def sign(secret: str, body: bytes) -> dict[str, str]:
     ts = str(int(time.time()))
@@ -164,6 +218,11 @@ class Agent:
         self.cfg = cfg
         self.queue = Queue(cfg.queue_path)
         self.nvr_ok = False
+        self.channels: dict[str, bool] = {}
+        self.health_state: dict[tuple[int, str], str] = {}
+        # Agent o'chib turgan davr ham kuzatuv uzilishi hisoblanadi
+        last_alive = self.queue.meta_get("last_alive")
+        self.queue.gap_open(last_alive or now_iso())
         self.nvr_auth = httpx.DigestAuth(cfg.nvr_user, cfg.nvr_password)
         self.nvr_base = f"{cfg.nvr_scheme}://{cfg.nvr_host}"
         self.server = httpx.AsyncClient(base_url=cfg.server_url.rstrip("/"), timeout=20, verify=cfg.verify_tls)
@@ -191,6 +250,7 @@ class Agent:
                         if resp.status_code != 200:
                             raise httpx.HTTPError(f"HTTP {resp.status_code}")
                         self.nvr_ok = True
+                        self.queue.gap_close(now_iso())
                         backoff = 2
                         log.info("NVR oqimiga ulandi")
                         buf = bytearray()
@@ -202,12 +262,22 @@ class Agent:
                                     continue
                                 if self.cfg.channels and ev["channel"] not in self.cfg.channels:
                                     continue
+                                if "state" in ev:
+                                    # videoloss/shelteralarm: NVR har necha soniyada «inactive» yuboradi —
+                                    # faqat holat o'zgarganini uzatamiz
+                                    key = (ev["channel"], ev["event_type"].lower())
+                                    if self.health_state.get(key, "inactive") == ev["state"]:
+                                        continue
+                                    self.health_state[key] = ev["state"]
+                                ev["edge_received_at"] = now_iso()
                                 ev["id"] = f"{ev['channel']}-{ev['region_id']}-{ev['occurred_at']}-{uuid.uuid4().hex[:6]}"
-                                if ev["event_type"].lower() != "linedetection":
+                                if "state" not in ev and ev["event_type"].lower() != "linedetection":
                                     ev["snapshot_b64"] = await self.snapshot(client, ev["channel"])
                                 self.queue.put(ev)
                                 log.info("Hodisa: kanal %s zona %s %s", ev["channel"], ev["region_id"], ev["event_type"])
                 except (httpx.HTTPError, OSError) as e:
+                    if self.nvr_ok:
+                        self.queue.gap_open(now_iso())
                     self.nvr_ok = False
                     log.warning("NVR bilan aloqa yo'q: %s (qayta urinish %s s)", e, backoff)
                     await asyncio.sleep(backoff)
@@ -218,7 +288,8 @@ class Agent:
         while True:
             batch = self.queue.peek(self.cfg.batch_size)
             if batch:
-                body = json.dumps({"events": batch, "nvr_ok": self.nvr_ok, "queue": self.queue.size()}).encode()
+                remaining = max(0, self.queue.size() - len(batch))
+                body = json.dumps({"events": batch, "nvr_ok": self.nvr_ok, "queue": remaining}).encode()
                 try:
                     r = await self.server.post("/api/edge/events", content=body, headers=sign(self.cfg.edge_secret, body))
                     if r.status_code == 200:
@@ -229,9 +300,35 @@ class Agent:
                     log.warning("Serverga ulanib bo'lmadi: %s (navbat: %s)", e, self.queue.size())
             await asyncio.sleep(2)
 
+    async def poll_channels(self) -> None:
+        """Har daqiqada NVR kanallari holati (kamera oflayn — R12)."""
+        async with httpx.AsyncClient(timeout=10) as client:
+            while True:
+                try:
+                    r = await client.get(
+                        f"{self.nvr_base}/ISAPI/ContentMgmt/InputProxy/channels/status", auth=self.nvr_auth
+                    )
+                    if r.status_code == 200:
+                        status = parse_channel_status(r.content)
+                        if status:
+                            self.channels = status
+                except httpx.HTTPError as e:
+                    log.warning("Kanal holatini olib bo'lmadi: %s", e)
+                await asyncio.sleep(60)
+
     async def heartbeat(self) -> None:
         while True:
-            body = json.dumps({"nvr_ok": self.nvr_ok, "queue": self.queue.size(), "version": VERSION}).encode()
+            if self.nvr_ok:
+                self.queue.meta_set("last_alive", now_iso())
+            body = json.dumps(
+                {
+                    "nvr_ok": self.nvr_ok,
+                    "queue": self.queue.size(),
+                    "version": VERSION,
+                    "channels": self.channels,
+                    "gaps": self.queue.gaps(),
+                }
+            ).encode()
             try:
                 await self.server.post("/api/edge/heartbeat", content=body, headers=sign(self.cfg.edge_secret, body))
             except httpx.HTTPError as e:
@@ -239,7 +336,7 @@ class Agent:
             await asyncio.sleep(self.cfg.heartbeat_seconds)
 
     async def run(self) -> None:
-        await asyncio.gather(self.listen_nvr(), self.push(), self.heartbeat())
+        await asyncio.gather(self.listen_nvr(), self.push(), self.heartbeat(), self.poll_channels())
 
 
 def main() -> None:

@@ -70,6 +70,9 @@ async def edge_events(request: Request, db: Session = Depends(get_db)):
                 edge_event_id=str(item.get("id")) if item.get("id") else None,
                 snapshot_path=_save_snapshot(item.get("snapshot_b64")),
                 raw={k: v for k, v in item.items() if k != "snapshot_b64"},
+                target=item.get("target"),
+                state=item.get("state"),
+                edge_received_at=datetime.fromisoformat(item["edge_received_at"]) if item.get("edge_received_at") else None,
             )
         except (KeyError, ValueError, TypeError):
             continue
@@ -77,17 +80,20 @@ async def edge_events(request: Request, db: Session = Depends(get_db)):
             duplicates += 1
         else:
             accepted.append(item.get("id"))
-    entry.heartbeat(db, {"nvr_ok": payload.get("nvr_ok", True), "queue": payload.get("queue", 0)})
+    # Paket bilan faqat navbat qoldig'i keladi; NVR holati va uzilishlar — heartbeat orqali
+    entry.heartbeat(db, {"queue": int(payload.get("queue", 0) or 0)})
     return {"accepted": accepted, "duplicates": duplicates}
 
 
 @router.post("/edge/heartbeat")
 async def edge_heartbeat(request: Request, db: Session = Depends(get_db)):
     payload = await _verified_json(request)
-    entry.heartbeat(
-        db,
-        {"nvr_ok": bool(payload.get("nvr_ok", True)), "queue": int(payload.get("queue", 0)), "version": payload.get("version")},
-    )
+    hb = {"nvr_ok": bool(payload.get("nvr_ok", True)), "queue": int(payload.get("queue", 0)), "version": payload.get("version")}
+    if isinstance(payload.get("channels"), dict):
+        hb["channels"] = payload["channels"]
+    if isinstance(payload.get("gaps"), list):
+        hb["gaps"] = payload["gaps"]
+    entry.heartbeat(db, hb)
     return {"ok": True}
 
 

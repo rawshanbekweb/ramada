@@ -47,7 +47,15 @@ Har bir funksional talab kodning qaysi joyida bajarilgani va qaysi test bilan te
 | FT-33 | `entry.sweep_windows` (R1), `process_door_event` (R3) |
 | FT-34 | `process_door_event` (R2), farrosh sessiyasi bo'lsa hisobga olinmaydi |
 | FT-35 | `ZoneKind.ENTRANCE`, `entry.entrance_count`, kunlik hisobotda ko'rsatiladi |
-| FT-36 | `entry.check_edge` (R12) va heartbeat |
+| FT-36 | `entry.check_edge` (R12) va heartbeat; har bir kanal holati, kamera yopilishi/videoloss, «jim» kamera (`check_camera_silence`) |
+
+TT'dan tashqari kamera ishonchliligi uchun qo'shilganlar (`services/entry.py`):
+- **Dalil kuchi.** Bitta qisqa hodisa yolg'on R2/R3 bermaydi (TT 20-bo'lim: «yuqori daraja faqat boshqa dalil bilan mos kelganda»).
+- **`CoverageGap`.** Kamera ko'rmagan davrdagi kirish oynasi uchun R1 o'rniga «tekshirib bo'lmadi».
+- **Edge navbati.** Navbat to'liq bo'shamaguncha oyna «kirish yo'q» deb yopilmaydi.
+- **NVR soati.** Farq bo'lsa, edge vaqti ishlatiladi.
+- **Zona sozlash rejimi.** Audit uchun.
+- **Nishon filtri.** Faqat odam hisobga olinadi.
 
 ## Farrosh, ogohlantirish, hisobot (7.5)
 
@@ -63,7 +71,7 @@ Har bir funksional talab kodning qaysi joyida bajarilgani va qaysi test bilan te
 
 ## Ogohlantirish qoidalari (8-bo'lim)
 
-R1 `entry.sweep_windows` · R2/R3 `entry.process_door_event` · R4/R5 `guestflow` · R6/R8 `rules` · R7 `housekeeping.save_morning_check` · R9 `shifts` · R10 `bookings.cancel`, Payme qaytarish · R11 `reports.staff_outliers` · R12 `entry.check_edge`, `housekeeping.check_morning_missing`, QR plita.
+R1 `entry.sweep_windows` · R2/R3 `entry.process_door_event`, `resolve_suspects` · R4/R5 `guestflow` · R6/R8 `rules` · R7 `housekeeping.save_morning_check` · R9 `shifts` · R10 `bookings.cancel`, Payme qaytarish · R11 `reports.staff_outliers` · R12 `entry.check_edge`, `housekeeping.check_morning_missing`, QR plita.
 
 Ikkita qo'shimcha kod bor: **KEY** (tasdiqsiz kalit berishga urinish, 16-bo'lim 1-sinov) va **PRICE** (so'rovnomadagi narx shikoyati).
 

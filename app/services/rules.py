@@ -91,6 +91,7 @@ def run_minutely(db: Session) -> None:
     steps = [
         discounts.expire_overdue,
         entry.check_edge,
+        entry.resolve_suspects,
         entry.sweep_windows,
         qr_reminders,
         r8_underpaid,
@@ -107,3 +108,4 @@ def run_minutely(db: Session) -> None:
 
 def run_every_15(db: Session) -> None:
     r6_not_full(db)
+    entry.check_camera_silence(db)

@@ -5,16 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}Panel{% endblock %} · Shaffof qabul</title>
 <link rel="stylesheet" href="/static/panel.css">
+{% if refresh %}<meta http-equiv="refresh" content="5">{% endif %}
 </head>
 <body>
 {% if user %}
 <header class="nav">
-  <a class="logo" href="/panel/">Shaffof qabul</a>
+  <a class="logo" href="/panel/">{{ hotel_name() }} · Shaffof qabul</a>
   <nav>
     <a href="/panel/">Bandlik</a>
     <a href="/panel/bookings">Bronlar</a>
     <a href="/panel/alerts">Ogohlantirishlar</a>
-    <a href="/panel/events">Kamera</a>
+    <a href="/panel/cameras">Kameralar</a>
     <a href="/panel/reports">Hisobotlar</a>
     <a href="/panel/shifts">Smenalar</a>
     <a href="/panel/housekeeping">Farrosh</a>
@@ -28,6 +29,7 @@
   </nav>
   <span class="me">{{ user.full_name }} · {{ ROLE_UZ[user.role] }} · <a href="/panel/logout">Chiqish</a></span>
 </header>
+{% if calibration_on() %}<div class="banner">🛠 Zona sozlash rejimi yoqilgan — bronsiz xonadagi harakat (R2/R3) vaqtincha ogohlantirilmaydi. <a href="/panel/cameras">Kameralar</a></div>{% endif %}
 {% endif %}
 <main class="main">
 {% block content %}{% endblock %}

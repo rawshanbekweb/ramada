@@ -1,6 +1,6 @@
-# Shaffof qabul
+# Ramada Nukus — Shaffof qabul
 
-Mehmonxonaga har bir joylashtirishni **uch mustaqil bosqichda** tasdiqlaydigan tizim (Nukus, TT v3.0):
+Ramada mehmonxonasiga har bir joylashtirishni **uch mustaqil bosqichda** tasdiqlaydigan tizim (Nukus, TT v3.0):
 
 1. **Pul tasdig'i**: mehmon SMS'dagi havola orqali rasmiy narxni ko'radi, tasdiqlaydi; to'lovni reception qo'lda kiritadi (naqd yoki terminal, fiskal chek raqami majburiy).
 2. **Kirish tasdig'i**: to'lovdan keyin ochiladigan kirish oynasida koridor kamerasi (Hikvision NVR, ISAPI) shu xona eshigiga kelinganini qayd etadi.

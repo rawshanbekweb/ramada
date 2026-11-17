@@ -2,7 +2,8 @@
 
 Bu ishlar dasturdan tashqarida qoladi yoki buyurtmachining ma'lumotini talab qiladi.
 
-- [ ] **Audit (1-hafta):** 40 ta eshik zonasining haqiqiy kanal va regionID raqamlarini panelga kiritish. `seed-demo` taxminiy jadval yaratadi: kanal = qavat, regionID = xona tartib raqami.
+- [ ] **Audit (1-hafta):** NVR'da har bir eshikka Intrusion (2–3 s) va Region Entrance, kameralarga Video Tampering/Video Loss va NTP sozlash (docs/DEPLOY.md 5.1). Keyin panelning «Zona sozlash rejimi» orqali 40 ta eshikni bog'lash (5.3).
+- [ ] NVR modeli AcuSense (human filtri)ni qo'llab-quvvatlashini tekshirish.
 - [ ] Haqiqiy tariflar, mavsumlar va bayramlarni panelga kiritish (hozirgi narxlar namuna sifatida qo'yilgan).
 - [ ] Qoraqalpoqcha matnlarni ona tilida so'zlashuvchiga tekshirtirish (`app/i18n/messages.py`, `kaa` kalitlari).
 - [ ] Haqiqiy NVR bilan edge agentni sinash: hodisa XML formati firmware versiyasiga qarab farq qilishi mumkin (`edge/agent.py`, `parse_alert`).

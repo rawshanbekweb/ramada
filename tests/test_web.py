@@ -72,7 +72,7 @@ def test_panel_pages(db, staff):
     for url in ["/panel/", "/panel/bookings", f"/panel/bookings/{b.id}", "/panel/alerts", "/panel/rooms",
                 "/panel/tariffs", "/panel/settings", "/panel/staff", "/panel/shifts", "/panel/housekeeping",
                 "/panel/audit", "/panel/reports", "/panel/reports?kind=weekly", "/panel/reports?kind=monthly",
-                "/panel/events", "/panel/rooms/qr-print"]:
+                "/panel/events", "/panel/rooms/qr-print", "/panel/cameras"]:
         r = c.get(url)
         assert r.status_code == 200, (url, r.text[:500])
     r = c.get("/panel/export.xlsx?start=2026-12-01&end=2026-12-31")
@@ -83,3 +83,30 @@ def test_panel_pages(db, staff):
     a = TestClient(app, base_url="https://hotel.test")
     a.post("/panel/login", data={"login": "admin", "password": "admin-pass-1"})
     assert a.get("/panel/tariffs").status_code == 403
+
+
+def test_camera_calibration_bind_flow(db, staff):
+    import re
+
+    from sqlalchemy import select
+
+    from app import clock
+    from app.models import CameraZone
+    from app.services import entry
+
+    c = TestClient(app, base_url="https://hotel.test")
+    c.post("/panel/login", data={"login": "owner", "password": "owner-pass-1"})
+    page = c.get("/panel/cameras").text
+    csrf = re.search(r'name="csrf" value="([^"]+)"', page).group(1)
+    c.post("/panel/cameras/calibration", data={"csrf": csrf, "hours": "2"})
+    assert "Zona sozlash rejimi yoqilgan" in c.get("/panel/cameras").text
+    ev = entry.ingest_event(db, channel=9, region_id=5, event_type="fielddetection", occurred_at=clock.now())
+    db.commit()
+    assert "<td>9" in c.get("/panel/cameras").text
+    rid = room(db, "305").id
+    c.post("/panel/cameras/bind", data={"csrf": csrf, "channel": "9", "region_id": "5", "kind": "door", "room_id": str(rid)})
+    db.expire_all()
+    assert db.scalar(select(CameraZone).where(CameraZone.region_id == 5, CameraZone.room_id == rid))
+    r = c.get(f"/panel/events/{ev.id}")
+    assert r.status_code == 200 and "Dalil kuchi" in r.text
+    assert "Ramada" in r.text

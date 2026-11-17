@@ -9,10 +9,15 @@
     <dt>Xona</dt><dd>{{ room.number if room else "—" }}</dd>
     <dt>Turi</dt><dd>{{ ev.event_type }} · {{ ev.kind }}</dd>
     <dt>Xulosa</dt><dd>{{ ev.verdict or "—" }}</dd>
+    <dt>Dalil kuchi</dt><dd>{% if ev.strength == "strong" %}kuchli (odam eshik oldida turdi yoki takroriy harakat){% elif ev.strength == "weak" %}kuchsiz (bitta qisqa harakat — yonidan o'tgan bo'lishi mumkin){% else %}—{% endif %}</dd>
+    {% if ev.target %}<dt>Nishon</dt><dd>{{ ev.target }}</dd>{% endif %}
+    {% if ev.skew_s %}<dt>NVR soati farqi</dt><dd>{{ ev.skew_s }} soniya</dd>{% endif %}
   </dl>
   {% if ev.snapshot_path %}<img class="snap" src="/panel/events/{{ ev.id }}/snapshot" alt="snapshot">{% endif %}
   {% if rtsp %}<h3>NVR yozuvi</h3>
   <p>iVMS-4200 / Hik-Connect'da kanal {{ cam.channel }}, vaqt {{ ev.occurred_at|dt }} ±30 soniya. VLC orqali (NVR lokal tarmog'ida):</p>
   <code class="block">{{ rtsp }}</code>{% endif %}
+  {% if nearby %}<h3>Shu eshikdagi hodisalar (±10 daqiqa)</h3>
+  <table class="tbl">{% for n in nearby %}<tr class="{{ 'void' if n.id != ev.id else '' }}"><td>{% if n.id == ev.id %}<b>{{ n.occurred_at|time }}</b>{% else %}<a href="/panel/events/{{ n.id }}">{{ n.occurred_at|time }}</a>{% endif %}</td><td>{{ n.event_type }}</td><td>{{ n.strength or "" }}</td><td>{{ n.verdict or "" }}</td></tr>{% endfor %}</table>{% endif %}
 </section>
 {% endblock %}
