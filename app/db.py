@@ -44,7 +44,7 @@ _SessionLocal: sessionmaker | None = None
 def make_engine(url: str):
     kwargs = {"future": True, "pool_pre_ping": True}
     if url.startswith("sqlite"):
-        kwargs["connect_args"] = {"check_same_thread": False}
+        kwargs["connect_args"] = {"check_same_thread": False, "timeout": 30}
         if url in ("sqlite://", "sqlite:///:memory:"):
             from sqlalchemy.pool import StaticPool
 
@@ -56,6 +56,8 @@ def make_engine(url: str):
         def _fk_on(dbapi_conn, _):  # pragma: no cover - trivial
             cur = dbapi_conn.cursor()
             cur.execute("PRAGMA foreign_keys=ON")
+            if url not in ("sqlite://", "sqlite:///:memory:"):
+                cur.execute("PRAGMA journal_mode=WAL")  # bir nechta jarayon (web + worker) uchun
             cur.close()
 
     return engine
@@ -94,7 +96,9 @@ def session_scope() -> Iterator[Session]:
 
 
 def get_db() -> Iterator[Session]:
-    """FastAPI dependency."""
+    """FastAPI dependency. Har doim `Depends(get_db, scope="function")` bilan ishlating:
+    aks holda commit javob yuborilgandan KEYIN bajariladi (mijoz eski holatni ko'radi,
+    commit xatosi esa yashirin qoladi)."""
     s = SessionLocal()
     try:
         yield s

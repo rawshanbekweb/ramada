@@ -63,7 +63,7 @@ class NeedLogin(Exception):
 
 
 # ------------------------------------------------------------------ auth
-def current_user(request: Request, db: Session = Depends(get_db)) -> User:
+def current_user(request: Request, db: Session = Depends(get_db, scope="function")) -> User:
     data = unsign_payload(request.cookies.get(COOKIE), "panel")
     if not data:
         raise NeedLogin()
@@ -110,7 +110,7 @@ def login_page(request: Request):
 
 
 @router.post("/login")
-def login(request: Request, login: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+def login(request: Request, login: str = Form(...), password: str = Form(...), db: Session = Depends(get_db, scope="function")):
     login = login.strip()[:40]
     ip = request.client.host if request.client else "?"
     since = clock.now() - timedelta(minutes=LOGIN_LOCK_MINUTES)
@@ -159,7 +159,7 @@ def logout():
 
 # ------------------------------------------------------------------ dashboard
 @router.get("/", response_class=HTMLResponse)
-def dashboard(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def dashboard(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     rooms = db.scalars(select(Room).where(Room.active.is_(True)).order_by(Room.floor, Room.number)).all()
     open_b = {b.room_id: b for b in bookings.open_bookings(db) if b.status == BookingStatus.ACTIVE}
     pending = {b.room_id: b for b in bookings.open_bookings(db) if b.status == BookingStatus.PENDING}
@@ -192,7 +192,7 @@ def bookings_list(
     start: str | None = None,
     end: str | None = None,
     user: User = Depends(current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     stmt = select(Booking).order_by(Booking.id.desc())
     if status:
@@ -212,7 +212,7 @@ def bookings_list(
 
 
 @router.get("/bookings/{bid}", response_class=HTMLResponse)
-def booking_detail(bid: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def booking_detail(bid: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     b = db.get(Booking, bid)
     if b is None:
         raise HTTPException(404)
@@ -233,14 +233,14 @@ def booking_detail(bid: int, request: Request, user: User = Depends(current_user
 
 
 @router.post("/bookings/{bid}/cancel", dependencies=[Depends(check_csrf)])
-def booking_cancel(bid: int, reason: str = Form(...), user: User = Depends(current_user), db: Session = Depends(get_db)):
+def booking_cancel(bid: int, reason: str = Form(...), user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     b = db.get(Booking, bid)
     bookings.cancel(db, b, user, reason)
     return back(f"/panel/bookings/{bid}")
 
 
 @router.post("/bookings/{bid}/resend", dependencies=[Depends(check_csrf)])
-def booking_resend(bid: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def booking_resend(bid: int, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     b = db.get(Booking, bid)
     if b and b.is_open:
         bookings.send_guest_link(db, b)
@@ -249,14 +249,14 @@ def booking_resend(bid: int, user: User = Depends(current_user), db: Session = D
 
 
 @router.post("/bookings/{bid}/checkout", dependencies=[Depends(check_csrf)])
-def booking_checkout(bid: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def booking_checkout(bid: int, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     b = db.get(Booking, bid)
     bookings.checkout(db, b, user, force=True)
     return back(f"/panel/bookings/{bid}")
 
 
 @router.get("/guest-photo/{bid}")
-def guest_photo(bid: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def guest_photo(bid: int, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     b = db.get(Booking, bid)
     if b is None or not b.guest.document_photo:
         raise HTTPException(404)
@@ -272,7 +272,7 @@ def guest_photo(bid: int, user: User = Depends(current_user), db: Session = Depe
 @router.get("/alerts", response_class=HTMLResponse)
 def alerts_list(
     request: Request, status: str | None = "new", rule: str | None = None,
-    user: User = Depends(current_user), db: Session = Depends(get_db),
+    user: User = Depends(current_user), db: Session = Depends(get_db, scope="function"),
 ):
     stmt = select(Alert).order_by(Alert.at.desc())
     if status:
@@ -289,7 +289,7 @@ def alerts_list(
 
 @router.post("/alerts/{aid}", dependencies=[Depends(check_csrf)])
 def alert_update(
-    aid: int, status: str = Form(...), note: str = Form(""), user: User = Depends(current_user), db: Session = Depends(get_db)
+    aid: int, status: str = Form(...), note: str = Form(""), user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")
 ):
     a = db.get(Alert, aid)
     if a is None or status not in {s.value for s in AlertStatus}:
@@ -299,7 +299,7 @@ def alert_update(
 
 
 @router.get("/events/{eid}", response_class=HTMLResponse)
-def event_view(eid: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def event_view(eid: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     ev = db.get(ZoneEvent, eid)
     if ev is None:
         raise HTTPException(404)
@@ -326,7 +326,7 @@ def event_view(eid: int, request: Request, user: User = Depends(current_user), d
 
 
 @router.get("/events/{eid}/snapshot")
-def event_snapshot(eid: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def event_snapshot(eid: int, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     ev = db.get(ZoneEvent, eid)
     if ev is None or not ev.snapshot_path:
         raise HTTPException(404)
@@ -337,7 +337,7 @@ def event_snapshot(eid: int, user: User = Depends(current_user), db: Session = D
 
 
 @router.get("/cameras", response_class=HTMLResponse)
-def cameras_page(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def cameras_page(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     from app.models import CoverageGap
 
     gaps = db.scalars(select(CoverageGap).order_by(CoverageGap.start_at.desc()).limit(30)).all()
@@ -355,7 +355,7 @@ def cameras_page(request: Request, user: User = Depends(current_user), db: Sessi
 
 
 @router.get("/cameras/{cam_id:int}/snapshot")
-def camera_snapshot(cam_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def camera_snapshot(cam_id: int, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     cam = db.get(Camera, cam_id)
     if cam is None or not cam.snapshot_path:
         raise HTTPException(404)
@@ -366,7 +366,7 @@ def camera_snapshot(cam_id: int, user: User = Depends(current_user), db: Session
 
 
 @router.get("/cameras/{cam_id:int}/zones", response_class=HTMLResponse)
-def camera_zones_page(cam_id: int, request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+def camera_zones_page(cam_id: int, request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function")):
     """Oddiy (RTSP) kameralar uchun: kadr ustida eshik zonalarini chizish."""
     cam = db.get(Camera, cam_id)
     if cam is None:
@@ -385,7 +385,7 @@ def camera_zones_page(cam_id: int, request: Request, user: User = Depends(owner_
 @router.post("/cameras/{cam_id:int}/zones", dependencies=[Depends(check_csrf)])
 def camera_zone_save(
     cam_id: int, polygon: str = Form(...), room_id: str = Form(""), kind: str = Form("door"),
-    user: User = Depends(owner_only), db: Session = Depends(get_db),
+    user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function"),
 ):
     import json as _json
 
@@ -415,7 +415,7 @@ def camera_zone_save(
 
 
 @router.post("/cameras/{cam_id:int}/zones/{zid:int}/delete", dependencies=[Depends(check_csrf)])
-def camera_zone_delete(cam_id: int, zid: int, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+def camera_zone_delete(cam_id: int, zid: int, user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function")):
     z = db.get(CameraZone, zid)
     if z is not None and z.camera_id == cam_id:
         audit.log(db, audit.actor_of(user), "zone.delete", z, old={"region": z.region_id, "room": z.room_id})
@@ -424,7 +424,7 @@ def camera_zone_delete(cam_id: int, zid: int, user: User = Depends(owner_only), 
 
 
 @router.post("/cameras/calibration", dependencies=[Depends(check_csrf)])
-def calibration_toggle(hours: int = Form(0), user: User = Depends(owner_only), db: Session = Depends(get_db)):
+def calibration_toggle(hours: int = Form(0), user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function")):
     """Zona sozlash rejimi: eshiklarni bittalab sinash paytida R2/R3 o'chadi (ko'pi bilan 4 soat)."""
     hours = max(0, min(4, hours))
     value = (clock.now() + timedelta(hours=hours)).isoformat() if hours else None
@@ -437,7 +437,7 @@ def calibration_toggle(hours: int = Form(0), user: User = Depends(owner_only), d
 @router.post("/cameras/bind", dependencies=[Depends(check_csrf)])
 def camera_bind(
     channel: int = Form(...), region_id: int = Form(...), kind: str = Form("door"), room_id: str = Form(""),
-    user: User = Depends(owner_only), db: Session = Depends(get_db),
+    user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function"),
 ):
     """Sozlash rejimida kelgan bog'lanmagan (kanal, hudud) ni xonaga bog'lash; kamera yo'q bo'lsa yaratiladi."""
     cam = db.scalar(select(Camera).where(Camera.channel == channel))
@@ -465,7 +465,7 @@ def camera_bind(
 
 
 @router.get("/events", response_class=HTMLResponse)
-def events_list(request: Request, room: str | None = None, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def events_list(request: Request, room: str | None = None, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     stmt = select(ZoneEvent).order_by(ZoneEvent.occurred_at.desc())
     if room:
         r = db.scalar(select(Room).where(Room.number == room))
@@ -478,7 +478,7 @@ def events_list(request: Request, room: str | None = None, user: User = Depends(
 
 # ------------------------------------------------------------------ rooms & cameras
 @router.get("/rooms", response_class=HTMLResponse)
-def rooms_page(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def rooms_page(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     rooms = db.scalars(select(Room).order_by(Room.floor, Room.number)).all()
     cats = db.scalars(select(RoomCategory).order_by(RoomCategory.id)).all()
     cams = db.scalars(select(Camera).order_by(Camera.channel)).all()
@@ -502,7 +502,7 @@ def rooms_page(request: Request, user: User = Depends(current_user), db: Session
 @router.post("/rooms/{rid:int}", dependencies=[Depends(check_csrf)])
 def room_update(
     rid: int, category_id: int = Form(...), state: str = Form(...), active: str | None = Form(None),
-    user: User = Depends(owner_only), db: Session = Depends(get_db),
+    user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function"),
 ):
     r = db.get(Room, rid)
     old = {"category": r.category_id, "state": r.state, "active": r.active}
@@ -514,7 +514,7 @@ def room_update(
 @router.post("/rooms/add", dependencies=[Depends(check_csrf)])
 def room_add(
     number: str = Form(...), floor: int = Form(...), category_id: int = Form(...),
-    user: User = Depends(owner_only), db: Session = Depends(get_db),
+    user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function"),
 ):
     r = Room(number=number.strip(), floor=floor, category_id=category_id)
     db.add(r)
@@ -524,7 +524,7 @@ def room_add(
 
 
 @router.post("/rooms/{rid:int}/reissue-qr", dependencies=[Depends(check_csrf)])
-def room_reissue_qr(rid: int, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+def room_reissue_qr(rid: int, user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function")):
     r = db.get(Room, rid)
     old = r.qr_version
     r.qr_version += 1
@@ -535,7 +535,7 @@ def room_reissue_qr(rid: int, user: User = Depends(owner_only), db: Session = De
 @router.post("/zones", dependencies=[Depends(check_csrf)])
 def zone_save(
     camera_id: int = Form(...), region_id: int = Form(...), kind: str = Form("door"), room_id: str = Form(""),
-    user: User = Depends(owner_only), db: Session = Depends(get_db),
+    user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function"),
 ):
     """FT-30: zona ↔ xona bog'lanishi (faqat ega)."""
     rid = int(room_id) if room_id else None
@@ -554,7 +554,7 @@ def zone_save(
 
 
 @router.post("/zones/{zid}/delete", dependencies=[Depends(check_csrf)])
-def zone_delete(zid: int, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+def zone_delete(zid: int, user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function")):
     z = db.get(CameraZone, zid)
     if z:
         audit.log(db, audit.actor_of(user), "zone.delete", z, old={"camera": z.camera_id, "region": z.region_id, "room": z.room_id})
@@ -565,7 +565,7 @@ def zone_delete(zid: int, user: User = Depends(owner_only), db: Session = Depend
 @router.post("/cameras", dependencies=[Depends(check_csrf)])
 def camera_save(
     name: str = Form(...), channel: int = Form(...), floor: str = Form(""),
-    user: User = Depends(owner_only), db: Session = Depends(get_db),
+    user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function"),
 ):
     cam = db.scalar(select(Camera).where(Camera.channel == channel))
     if cam is None:
@@ -579,7 +579,7 @@ def camera_save(
 
 
 @router.get("/rooms/qr-print", response_class=HTMLResponse)
-def qr_print(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+def qr_print(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function")):
     rooms = db.scalars(select(Room).where(Room.active.is_(True)).order_by(Room.floor, Room.number)).all()
     base = get_settings().base_url.rstrip("/")
     items = []
@@ -597,7 +597,7 @@ def qr_print(request: Request, user: User = Depends(owner_only), db: Session = D
 
 # ------------------------------------------------------------------ tariffs
 @router.get("/tariffs", response_class=HTMLResponse)
-def tariffs_page(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+def tariffs_page(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function")):
     cats = db.scalars(select(RoomCategory).order_by(RoomCategory.id)).all()
     seasons = db.scalars(select(Season).order_by(Season.start_date)).all()
     holidays = db.scalars(select(Holiday).order_by(Holiday.day)).all()
@@ -609,7 +609,7 @@ def tariffs_page(request: Request, user: User = Depends(owner_only), db: Session
 
 
 @router.post("/tariffs", dependencies=[Depends(check_csrf)])
-async def tariffs_save(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+async def tariffs_save(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function")):
     """FT-10: faqat ega o'zgartiradi, har bir o'zgarish jurnalga yoziladi."""
     form = await request.form()
     for key, value in form.items():
@@ -644,7 +644,7 @@ async def tariffs_save(request: Request, user: User = Depends(owner_only), db: S
 
 @router.post("/categories", dependencies=[Depends(check_csrf)])
 def category_add(code: str = Form(...), name: str = Form(...), capacity: int = Form(2),
-                 user: User = Depends(owner_only), db: Session = Depends(get_db)):
+                 user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function")):
     c = RoomCategory(code=code.strip(), name=name.strip(), capacity=capacity)
     db.add(c)
     db.flush()
@@ -654,7 +654,7 @@ def category_add(code: str = Form(...), name: str = Form(...), capacity: int = F
 
 @router.post("/seasons", dependencies=[Depends(check_csrf)])
 def season_add(name: str = Form(...), start_date: date = Form(...), end_date: date = Form(...), priority: int = Form(0),
-               user: User = Depends(owner_only), db: Session = Depends(get_db)):
+               user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function")):
     s = Season(name=name, start_date=start_date, end_date=end_date, priority=priority)
     db.add(s)
     db.flush()
@@ -663,7 +663,7 @@ def season_add(name: str = Form(...), start_date: date = Form(...), end_date: da
 
 
 @router.post("/seasons/{sid}/delete", dependencies=[Depends(check_csrf)])
-def season_delete(sid: int, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+def season_delete(sid: int, user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function")):
     s = db.get(Season, sid)
     if s:
         for t_ in db.scalars(select(Tariff).where(Tariff.season_id == sid)):
@@ -674,7 +674,7 @@ def season_delete(sid: int, user: User = Depends(owner_only), db: Session = Depe
 
 
 @router.post("/holidays", dependencies=[Depends(check_csrf)])
-def holiday_add(day: date = Form(...), name: str = Form(...), user: User = Depends(owner_only), db: Session = Depends(get_db)):
+def holiday_add(day: date = Form(...), name: str = Form(...), user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function")):
     h = Holiday(day=day, name=name)
     db.add(h)
     db.flush()
@@ -683,7 +683,7 @@ def holiday_add(day: date = Form(...), name: str = Form(...), user: User = Depen
 
 
 @router.post("/holidays/{hid}/delete", dependencies=[Depends(check_csrf)])
-def holiday_delete(hid: int, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+def holiday_delete(hid: int, user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function")):
     h = db.get(Holiday, hid)
     if h:
         audit.log(db, audit.actor_of(user), "holiday.delete", h, old={"day": h.day})
@@ -726,12 +726,12 @@ SETTING_FIELDS = [
 
 
 @router.get("/settings", response_class=HTMLResponse)
-def settings_page(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+def settings_page(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function")):
     return render(request, "settings.html", fields=SETTING_FIELDS, values=cfg.all_settings(db))
 
 
 @router.post("/settings", dependencies=[Depends(check_csrf)])
-async def settings_save(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+async def settings_save(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function")):
     form = await request.form()
     for key, _label, kind in SETTING_FIELDS:
         if kind == "bool":
@@ -758,7 +758,7 @@ async def settings_save(request: Request, user: User = Depends(owner_only), db: 
 
 # ------------------------------------------------------------------ staff
 @router.get("/staff", response_class=HTMLResponse)
-def staff_page(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+def staff_page(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function")):
     rows = db.scalars(select(User).order_by(User.active.desc(), User.role, User.full_name)).all()
     return render(request, "staff.html", rows=rows, roles=[r.value for r in Role], bot_hint=get_settings().telegram_bot_token != "")
 
@@ -766,7 +766,7 @@ def staff_page(request: Request, user: User = Depends(owner_only), db: Session =
 @router.post("/staff", dependencies=[Depends(check_csrf)])
 def staff_add(
     full_name: str = Form(...), role: str = Form(...), phone: str = Form(""), lang: str = Form("uz"),
-    user: User = Depends(owner_only), db: Session = Depends(get_db),
+    user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function"),
 ):
     if role not in {r.value for r in Role}:
         raise HTTPException(400)
@@ -780,7 +780,7 @@ def staff_add(
 @router.post("/staff/{uid}", dependencies=[Depends(check_csrf)])
 def staff_update(
     uid: int, action: str = Form(...), login: str = Form(""), password: str = Form(""),
-    user: User = Depends(owner_only), db: Session = Depends(get_db),
+    user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function"),
 ):
     u = db.get(User, uid)
     if u is None:
@@ -804,13 +804,13 @@ def staff_update(
 
 # ------------------------------------------------------------------ shifts, housekeeping, audit
 @router.get("/shifts", response_class=HTMLResponse)
-def shifts_page(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def shifts_page(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     rows = db.scalars(select(Shift).order_by(Shift.id.desc()).limit(200)).all()
     return render(request, "shifts.html", rows=rows)
 
 
 @router.get("/housekeeping", response_class=HTMLResponse)
-def housekeeping_page(request: Request, day: str | None = None, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def housekeeping_page(request: Request, day: str | None = None, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     from app.services import housekeeping
 
     d = date.fromisoformat(day) if day else clock.today()
@@ -823,7 +823,7 @@ def housekeeping_page(request: Request, day: str | None = None, user: User = Dep
 
 
 @router.get("/audit", response_class=HTMLResponse)
-def audit_page(request: Request, action: str | None = None, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+def audit_page(request: Request, action: str | None = None, user: User = Depends(owner_only), db: Session = Depends(get_db, scope="function")):
     stmt = select(AuditLog).order_by(AuditLog.id.desc())
     if action:
         stmt = stmt.where(AuditLog.action.like(f"{action}%"))
@@ -835,7 +835,7 @@ def audit_page(request: Request, action: str | None = None, user: User = Depends
 @router.get("/reports", response_class=HTMLResponse)
 def reports_page(
     request: Request, kind: str = "daily", day: str | None = None,
-    user: User = Depends(current_user), db: Session = Depends(get_db),
+    user: User = Depends(current_user), db: Session = Depends(get_db, scope="function"),
 ):
     d = date.fromisoformat(day) if day else None
     if kind == "weekly":
@@ -851,7 +851,7 @@ def reports_page(
 
 
 @router.get("/export.xlsx")
-def export_xlsx(start: str, end: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def export_xlsx(start: str, end: str, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     s, e = date.fromisoformat(start), date.fromisoformat(end) + timedelta(days=1)
     data = export.build_xlsx(db, s, e)
     audit.log(db, audit.actor_of(user), "export.xlsx", object_type="export", object_id=f"{start}..{end}")

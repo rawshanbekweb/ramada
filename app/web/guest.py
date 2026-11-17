@@ -65,7 +65,7 @@ def _render(request: Request, name: str, ctx: dict, status: int = 200) -> HTMLRe
 
 # ------------------------------------------------------------------ booking page
 @router.get("/g/{token}", response_class=HTMLResponse)
-def guest_page(token: str, request: Request, db: Session = Depends(get_db)):
+def guest_page(token: str, request: Request, db: Session = Depends(get_db, scope="function")):
     dev, new_dev = _device(request)
     lang = _lang(request)
     b = guestflow.booking_by_token(db, token)
@@ -120,7 +120,7 @@ def _guarded(request: Request, db: Session, token: str):
 
 
 @router.post("/g/{token}/accept")
-def guest_accept(token: str, request: Request, db: Session = Depends(get_db)):
+def guest_accept(token: str, request: Request, db: Session = Depends(get_db, scope="function")):
     dev, new_dev = _device(request)
     b, dh = _guarded(request, db, token)
     if b is not None and b.status == BookingStatus.PENDING:
@@ -132,7 +132,7 @@ def guest_accept(token: str, request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/g/{token}/unlock")
-def guest_unlock(token: str, request: Request, last4: str = Form(""), db: Session = Depends(get_db)):
+def guest_unlock(token: str, request: Request, last4: str = Form(""), db: Session = Depends(get_db, scope="function")):
     dev, new_dev = _device(request)
     lang = _lang(request)
     b = guestflow.booking_by_token(db, token)
@@ -156,7 +156,7 @@ def guest_unlock(token: str, request: Request, last4: str = Form(""), db: Sessio
 
 
 @router.post("/g/{token}/amendment")
-def guest_accept_amendment(token: str, request: Request, db: Session = Depends(get_db)):
+def guest_accept_amendment(token: str, request: Request, db: Session = Depends(get_db, scope="function")):
     b, _ = _guarded(request, db, token)
     if b is not None:
         am = bookings.get_pending_amendment(db, b)
@@ -173,7 +173,7 @@ def guest_survey(
     complaint: str | None = Form(None),
     paid_claim: str | None = Form(None),
     comment: str | None = Form(None),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     b, _ = _guarded(request, db, token)
     if b is not None and b.status == BookingStatus.CHECKED_OUT:
@@ -210,12 +210,12 @@ def _scan_page(request: Request, db: Session, token: str, last4: str | None):
 
 
 @router.get("/q/{token}", response_class=HTMLResponse)
-def qr_scan(token: str, request: Request, db: Session = Depends(get_db)):
+def qr_scan(token: str, request: Request, db: Session = Depends(get_db, scope="function")):
     return _scan_page(request, db, token, None)
 
 
 @router.post("/q/{token}", response_class=HTMLResponse)
-def qr_last4(token: str, request: Request, last4: str = Form(""), db: Session = Depends(get_db)):
+def qr_last4(token: str, request: Request, last4: str = Form(""), db: Session = Depends(get_db, scope="function")):
     return _scan_page(request, db, token, last4.strip())
 
 
@@ -227,7 +227,7 @@ def qr_answer(
     answer: str = Form(...),
     claimed_amount: str | None = Form(None),
     claimed_room: str | None = Form(None),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db, scope="function"),
 ):
     dev, new_dev = _device(request)
     lang = _lang(request)

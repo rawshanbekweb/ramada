@@ -57,6 +57,7 @@ class Config:
     queue_path: str = "edge/edge.queue.db"
     batch_size: int = 50
     heartbeat_seconds: int = 60
+    config_refresh_seconds: int = 300
     verify_tls: bool = True
 
     @classmethod
@@ -230,7 +231,7 @@ class Agent:
                     self.zones = zones
             except (httpx.HTTPError, ValueError) as e:
                 log.warning("Konfiguratsiya olinmadi: %s", e)
-            await asyncio.sleep(300)
+            await asyncio.sleep(self.cfg.config_refresh_seconds)
 
     async def run(self) -> None:
         if not self.sources:

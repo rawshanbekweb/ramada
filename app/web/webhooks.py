@@ -54,7 +54,7 @@ def _save_snapshot(b64: str | None, limit: int = 2_000_000) -> str | None:
 
 
 @router.post("/edge/events")
-async def edge_events(request: Request, db: Session = Depends(get_db)):
+async def edge_events(request: Request, db: Session = Depends(get_db, scope="function")):
     """Edge agent NVR hodisalarini paket bilan yuboradi (internet uzilsa — keyin, navbatdan)."""
     payload = await _verified_json(request)
     accepted, duplicates = [], 0
@@ -86,7 +86,7 @@ async def edge_events(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/edge/heartbeat")
-async def edge_heartbeat(request: Request, db: Session = Depends(get_db)):
+async def edge_heartbeat(request: Request, db: Session = Depends(get_db, scope="function")):
     payload = await _verified_json(request)
     hb = {"nvr_ok": bool(payload.get("nvr_ok", True)), "queue": int(payload.get("queue", 0)), "version": payload.get("version")}
     if isinstance(payload.get("channels"), dict):
@@ -98,7 +98,7 @@ async def edge_heartbeat(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/edge/snapshot")
-async def edge_snapshot(request: Request, db: Session = Depends(get_db)):
+async def edge_snapshot(request: Request, db: Session = Depends(get_db, scope="function")):
     """Kamera kadri: panelda eshik zonalarini chizish uchun."""
     payload = await _verified_json(request)
     try:
@@ -121,7 +121,7 @@ async def edge_snapshot(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/edge/config")
-async def edge_config(request: Request, db: Session = Depends(get_db)):
+async def edge_config(request: Request, db: Session = Depends(get_db, scope="function")):
     """Edge agentga qaysi kanallar/hududlar kuzatilishini aytadi."""
     await _verified_json(request)
     cams = db.scalars(select(Camera)).all()
