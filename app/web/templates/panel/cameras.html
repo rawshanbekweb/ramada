@@ -20,7 +20,8 @@
     <tr><th>Kanal</th><th>Nomi</th><th>Holat</th><th>Eshiklar</th><th>Oxirgi hodisa</th><th>Hodisalar 24 soat</th><th>Kuzatuv</th><th>Noto'g'ri signal (30 kun)</th></tr>
     {% for r in health %}{% set c = r.cam %}
     <tr>
-      <td>{{ c.channel }}</td><td>{{ c.name }}{% if r.entrance %} · <span class="pill">asosiy kirish</span>{% endif %}</td>
+      <td>{{ c.channel }}</td><td>{{ c.name }}{% if r.entrance %} · <span class="pill">asosiy kirish</span>{% endif %}
+        {% if user.role == "owner" %}<br><a href="/panel/cameras/{{ c.id }}/zones">✏️ zonalar{% if c.snapshot_path %} (kadr bor){% endif %}</a>{% endif %}</td>
       <td>{% if c.tampered %}<span class="pill bad">yopilgan / signal yo'q</span>{% elif c.online is sameas false %}<span class="pill bad">oflayn</span>{% elif c.online %}<span class="pill ok">onlayn</span>{% else %}<span class="pill">noma'lum</span>{% endif %}</td>
       <td>{{ r.doors }}</td><td>{{ c.last_event_at|dt }}</td><td>{{ r.events_24h }}</td>
       <td>{{ r.coverage_pct }}%<div class="bar"><i style="width:{{ r.coverage_pct }}%"></i></div></td>

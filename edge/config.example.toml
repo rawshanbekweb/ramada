@@ -1,15 +1,59 @@
 # Edge agent sozlamalari. Nusxa oling: cp edge/config.example.toml edge/config.toml
 server_url = "https://qabul.example.uz"     # SQ_BASE_URL bilan bir xil
 edge_secret = "SQ_EDGE_SECRET bilan bir xil uzun tasodifiy satr"
-
-nvr_host = "192.168.1.64"                    # NVR lokal IP manzili
-nvr_scheme = "http"
-nvr_user = "isapi_reader"                    # NVR'da faqat o'qish huquqli alohida foydalanuvchi oching
-nvr_password = "..."
-
 queue_path = "edge/edge.queue.db"            # internet uzilganda hodisalar shu yerda saqlanadi
-snapshots = true                             # hodisa paytidagi kadrni yuborish
-batch_size = 50
 heartbeat_seconds = 60
-channels = []                                # bo'sh — barcha kanallar
 verify_tls = true
+
+# Har bir kamera yoki NVR — alohida [[sources]]. Turlarni aralashtirish mumkin.
+# `channel` — serverdagi (paneldagi) kamera raqami; har bir kamera uchun noyob bo'lsin.
+
+# 1) ISTALGAN ARZON IP KAMERA (tavsiya): tahlil shu mini-PC'da bajariladi.
+#    Kameradan faqat RTSP kerak. Kichik substream oling (640x360 yetarli).
+#    Zonalar panelda: Kameralar → ✏️ zonalar (kadr ustida chiziladi).
+[[sources]]
+type = "rtsp"
+channel = 1
+url = "rtsp://admin:PAROL@192.168.1.21:554/stream2"
+fps = 5
+# dwell_seconds = 2.5   # odam eshik oldida shuncha turdi — kuchli dalil
+# min_fraction = 0.05   # zona maydonining necha qismi o'zgarsa — harakat
+
+[[sources]]
+type = "rtsp"
+channel = 2
+url = "rtsp://admin:PAROL@192.168.1.22:554/stream2"
+
+# RTSP manzillari (substream) misollari:
+#   Hikvision:        rtsp://user:pass@IP:554/Streaming/Channels/102
+#   Dahua/Imou:       rtsp://user:pass@IP:554/cam/realmonitor?channel=1&subtype=1
+#   XMEye/ko'p arzon: rtsp://IP:554/user=admin&password=PAROL&channel=1&stream=1.sdp
+#   Tp-Link Tapo:     rtsp://user:pass@IP:554/stream2
+#   Ezviz:            rtsp://admin:VERIFIKATSIYA_KODI@IP:554/h264/ch1/sub/av_stream
+#   NVR orqali ham olsa bo'ladi (har bir kanal — alohida [[sources]]).
+
+# 2) Hikvision NVR yoki kamera — o'z hodisalari (Intrusion, Region Entrance...)
+# [[sources]]
+# type = "hikvision"
+# host = "192.168.1.64"
+# user = "isapi_reader"
+# password = "..."
+# channels = [1, 2, 3]       # shu NVR kanallari (uzilish hisobi uchun)
+# channel_offset = 0         # bir nechta NVR bo'lsa: ikkinchisiga 100 va h.k.
+
+# 3) Dahua NVR/kamera (Imou, Amcrest va boshqa OEM) — hudud (rule) nomini «1», «2»… qo'ying
+# [[sources]]
+# type = "dahua"
+# host = "192.168.1.108"
+# user = "admin"
+# password = "..."
+# channels = [1, 2]
+
+# 4) ONVIF kamera (eshik darajasida aniqlik uchun kamerada «hudud» qoidalari bo'lishi kerak)
+# [[sources]]
+# type = "onvif"
+# host = "192.168.1.30"
+# user = "admin"
+# password = "..."
+# channel = 5
+# events_url = "http://192.168.1.30/onvif/event_service"   # ixtiyoriy

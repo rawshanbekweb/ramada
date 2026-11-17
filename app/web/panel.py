@@ -332,6 +332,75 @@ def cameras_page(request: Request, user: User = Depends(current_user), db: Sessi
     )
 
 
+@router.get("/cameras/{cam_id:int}/snapshot")
+def camera_snapshot(cam_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    cam = db.get(Camera, cam_id)
+    if cam is None or not cam.snapshot_path:
+        raise HTTPException(404)
+    path = Path(cam.snapshot_path).resolve()
+    if Path(get_settings().storage_dir).resolve() not in path.parents or not path.exists():
+        raise HTTPException(404)
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+
+@router.get("/cameras/{cam_id:int}/zones", response_class=HTMLResponse)
+def camera_zones_page(cam_id: int, request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+    """Oddiy (RTSP) kameralar uchun: kadr ustida eshik zonalarini chizish."""
+    cam = db.get(Camera, cam_id)
+    if cam is None:
+        raise HTTPException(404)
+    zones = db.scalars(select(CameraZone).where(CameraZone.camera_id == cam.id).order_by(CameraZone.region_id)).all()
+    rooms = db.scalars(select(Room).where(Room.active.is_(True)).order_by(Room.floor, Room.number)).all()
+    import json as _json
+
+    zones_json = _json.dumps(
+        [{"id": z.id, "region_id": z.region_id, "kind": z.kind, "room": z.room.number if z.room else None,
+          "polygon": z.polygon} for z in zones if z.polygon]
+    )
+    return render(request, "camera_zones.html", cam=cam, zones=zones, rooms=rooms, zones_json=zones_json)
+
+
+@router.post("/cameras/{cam_id:int}/zones", dependencies=[Depends(check_csrf)])
+def camera_zone_save(
+    cam_id: int, polygon: str = Form(...), room_id: str = Form(""), kind: str = Form("door"),
+    user: User = Depends(owner_only), db: Session = Depends(get_db),
+):
+    import json as _json
+
+    cam = db.get(Camera, cam_id)
+    try:
+        pts = [[round(float(x), 4), round(float(y), 4)] for x, y in _json.loads(polygon)]
+    except (ValueError, TypeError):
+        raise HTTPException(400, "Ko'pburchak noto'g'ri")
+    if cam is None or len(pts) < 3 or not all(0 <= v <= 1 for p in pts for v in p) or kind not in ("door", "entrance"):
+        raise HTTPException(400, "Kamida 3 nuqta kerak")
+    rid = int(room_id) if room_id else None
+    if kind == "door" and rid is None:
+        raise HTTPException(400, "Eshik zonasi uchun xonani tanlang")
+    # Bir xona — bitta eshik zonasi: avvalgisi (shu kamerada) yangilanadi
+    z = None
+    if rid is not None:
+        z = db.scalar(select(CameraZone).where(CameraZone.camera_id == cam.id, CameraZone.room_id == rid, CameraZone.kind == kind))
+    old = {"polygon": z.polygon} if z else None
+    if z is None:
+        next_id = (db.scalar(select(func.max(CameraZone.region_id)).where(CameraZone.camera_id == cam.id)) or 0) + 1
+        z = CameraZone(camera_id=cam.id, region_id=next_id, kind=kind, room_id=rid if kind == "door" else None)
+        db.add(z)
+    z.polygon = pts
+    db.flush()
+    audit.log(db, audit.actor_of(user), "zone.polygon", z, old=old, new={"camera": cam.channel, "room": rid, "points": len(pts)})
+    return back(f"/panel/cameras/{cam.id}/zones")
+
+
+@router.post("/cameras/{cam_id:int}/zones/{zid:int}/delete", dependencies=[Depends(check_csrf)])
+def camera_zone_delete(cam_id: int, zid: int, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+    z = db.get(CameraZone, zid)
+    if z is not None and z.camera_id == cam_id:
+        audit.log(db, audit.actor_of(user), "zone.delete", z, old={"region": z.region_id, "room": z.room_id})
+        db.delete(z)
+    return back(f"/panel/cameras/{cam_id}/zones")
+
+
 @router.post("/cameras/calibration", dependencies=[Depends(check_csrf)])
 def calibration_toggle(hours: int = Form(0), user: User = Depends(owner_only), db: Session = Depends(get_db)):
     """Zona sozlash rejimi: eshiklarni bittalab sinash paytida R2/R3 o'chadi (ko'pi bilan 4 soat)."""

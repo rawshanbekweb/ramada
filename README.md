@@ -3,7 +3,7 @@
 Ramada mehmonxonasiga har bir joylashtirishni **uch mustaqil bosqichda** tasdiqlaydigan tizim (Nukus, TT v3.0):
 
 1. **Pul tasdig'i**: mehmon SMS'dagi havola orqali rasmiy narxni ko'radi, tasdiqlaydi; to'lovni reception qo'lda kiritadi (naqd yoki terminal, fiskal chek raqami majburiy).
-2. **Kirish tasdig'i**: to'lovdan keyin ochiladigan kirish oynasida koridor kamerasi (Hikvision NVR, ISAPI) shu xona eshigiga kelinganini qayd etadi.
+2. **Kirish tasdig'i**: to'lovdan keyin ochiladigan kirish oynasida koridor kamerasi shu xona eshigiga kelinganini qayd etadi. Har qanday oddiy IP kamera ishlaydi: tahlil mehmonxonadagi mini-PC'da bajariladi.
 3. **Xonada tasdiq**: mehmon xonadagi imzolangan QR plitani skanerlab, «shu xonadaman, shu summani to'ladim» deydi va Wi-Fi parolini oladi.
 
 Biror bosqich o'tmasa yoki bronsiz xonada faollik bo'lsa, ega Telegram orqali darhol xabar oladi (R1–R12 qoidalari).
@@ -19,7 +19,7 @@ Biror bosqich o'tmasa yoki bronsiz xonada faollik bo'lsa, ega Telegram orqali da
 | Biznes-mantiq | `app/services/` | — |
 | SMS / Telegram | `app/integrations/` | — |
 | Rejalashtiruvchi (qoidalar, hisobotlar) | `app/worker.py`, `app/services/rules.py` | — |
-| Edge agent (NVR yonida) | `edge/agent.py` | Mehmonxonadagi mini-PC |
+| Edge agent: istalgan IP kamera (RTSP-tahlil), Hikvision, Dahua, ONVIF | `edge/` | Mehmonxonadagi mini-PC |
 | Migratsiyalar | `migrations/` | — |
 | Testlar (TT 16-bo'lim, 12 ta sinov va boshqalar) | `tests/` | — |
 

@@ -1,0 +1,72 @@
+{% extends "panel/base.html" %}
+{% block title %}Zonalar · {{ cam.name }}{% endblock %}
+{% block content %}
+<h1>{{ cam.name }} (kanal {{ cam.channel }}) — eshik zonalari</h1>
+<p class="muted">Oddiy kameralarda tahlil mini-PC'da bajariladi: har bir eshik oldidagi pol qismini kadr ustida 4–6 nuqta bilan belgilang.
+Odam eshikni ochishda turadigan joyni oling, koridorning o'rtasini emas — shunda yonidan o'tganlar kamroq hisoblanadi. Edge agent zonalarni 5 daqiqa ichida oladi.</p>
+<div class="grid2">
+<section class="card">
+  {% if cam.snapshot_path %}
+  <div class="zone-wrap" id="wrap">
+    <img id="snap" src="/panel/cameras/{{ cam.id }}/snapshot" alt="kadr">
+    <svg id="svg" viewBox="0 0 1 1" preserveAspectRatio="none"></svg>
+  </div>
+  <p class="muted">Kadr: {{ cam.snapshot_at|dt }}. Kadr ustiga bosib nuqtalar qo'ying; «Tozalash» — qaytadan boshlash.</p>
+  <form method="post" action="/panel/cameras/{{ cam.id }}/zones" class="inline" id="zform">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="polygon" id="poly">
+    <select name="kind" id="kind"><option value="door">eshik</option><option value="entrance">asosiy kirish</option></select>
+    <select name="room_id"><option value="">— xona —</option>{% for r in rooms %}<option value="{{ r.id }}">{{ r.number }}</option>{% endfor %}</select>
+    <button type="button" class="btn sm ghost" id="clear">Tozalash</button>
+    <button class="btn sm" id="save" disabled>Saqlash</button>
+  </form>
+  {% else %}
+  <p class="err">Bu kameradan hali kadr kelmagan. Edge agent ishga tushgach (rtsp, hikvision yoki dahua manbasi) kadr bir necha daqiqada paydo bo'ladi.</p>
+  {% endif %}
+</section>
+<section class="card">
+  <h2>Zonalar</h2>
+  <table class="tbl"><tr><th>ID</th><th>Turi</th><th>Xona</th><th>Shakl</th><th></th></tr>
+  {% for z in zones %}<tr><td>{{ z.region_id }}</td><td>{{ "eshik" if z.kind == "door" else "asosiy kirish" }}</td><td>{{ z.room.number if z.room else "—" }}</td>
+    <td>{{ (z.polygon|length ~ " nuqta") if z.polygon else "kamera o'zida (ID bo'yicha)" }}</td>
+    <td><form method="post" action="/panel/cameras/{{ cam.id }}/zones/{{ z.id }}/delete" class="inline" onsubmit="return confirm('O\'chirilsinmi?')"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="x">×</button></form></td></tr>
+  {% else %}<tr><td colspan="5" class="muted">Yo'q</td></tr>{% endfor %}</table>
+  <p><a href="/panel/cameras">← Kameralar</a></p>
+</section>
+</div>
+<script>
+(function () {
+  var svg = document.getElementById("svg"); if (!svg) return;
+  var existing = {{ zones_json|safe }}, pts = [];
+  var NS = "http://www.w3.org/2000/svg";
+  function poly(points, cls, label) {
+    var p = document.createElementNS(NS, "polygon");
+    p.setAttribute("points", points.map(function (q) { return q[0] + "," + q[1]; }).join(" "));
+    p.setAttribute("class", cls); svg.appendChild(p);
+    if (label) {
+      var cx = 0, cy = 0; points.forEach(function (q) { cx += q[0]; cy += q[1]; });
+      var t = document.createElementNS(NS, "text");
+      t.setAttribute("x", cx / points.length); t.setAttribute("y", cy / points.length);
+      t.setAttribute("class", "zlabel"); t.textContent = label; svg.appendChild(t);
+    }
+  }
+  function draw() {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    existing.forEach(function (z) { poly(z.polygon, z.kind === "door" ? "zdoor" : "zline", z.room || "kirish"); });
+    if (pts.length) poly(pts, "znew");
+    pts.forEach(function (q) {
+      var c = document.createElementNS(NS, "circle");
+      c.setAttribute("cx", q[0]); c.setAttribute("cy", q[1]); c.setAttribute("r", 0.008); c.setAttribute("class", "zpt"); svg.appendChild(c);
+    });
+    document.getElementById("poly").value = JSON.stringify(pts);
+    document.getElementById("save").disabled = pts.length < 3;
+  }
+  svg.addEventListener("click", function (e) {
+    var r = svg.getBoundingClientRect();
+    pts.push([+((e.clientX - r.left) / r.width).toFixed(4), +((e.clientY - r.top) / r.height).toFixed(4)]);
+    draw();
+  });
+  document.getElementById("clear").addEventListener("click", function () { pts = []; draw(); });
+  draw();
+})();
+</script>
+{% endblock %}

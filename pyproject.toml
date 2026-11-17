@@ -20,7 +20,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "numpy>=1.26"]
+# Mini-PC (edge agent): oddiy RTSP kameralar uchun video tahlil
+edge = ["httpx>=0.27", "numpy>=1.26", "opencv-python-headless>=4.9"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

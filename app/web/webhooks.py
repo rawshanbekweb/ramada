@@ -37,14 +37,14 @@ async def _verified_json(request: Request) -> dict:
         raise HTTPException(400, "bad json")
 
 
-def _save_snapshot(b64: str | None) -> str | None:
+def _save_snapshot(b64: str | None, limit: int = 2_000_000) -> str | None:
     if not b64:
         return None
     try:
         data = base64.b64decode(b64, validate=True)
     except (binascii.Error, ValueError):
         return None
-    if len(data) > 2_000_000 or not data.startswith(b"\xff\xd8"):
+    if len(data) > limit or not data.startswith(b"\xff\xd8"):
         return None
     folder = Path(get_settings().storage_dir) / "snapshots" / datetime.now().strftime("%Y%m%d")
     folder.mkdir(parents=True, exist_ok=True)
@@ -97,6 +97,29 @@ async def edge_heartbeat(request: Request, db: Session = Depends(get_db)):
     return {"ok": True}
 
 
+@router.post("/edge/snapshot")
+async def edge_snapshot(request: Request, db: Session = Depends(get_db)):
+    """Kamera kadri: panelda eshik zonalarini chizish uchun."""
+    payload = await _verified_json(request)
+    try:
+        channel = int(payload["channel"])
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(400, "channel")
+    cam = db.scalar(select(Camera).where(Camera.channel == channel))
+    if cam is None:
+        cam = Camera(name=f"Kanal {channel}", channel=channel)
+        db.add(cam)
+        db.flush()
+    path = _save_snapshot(payload.get("jpeg_b64"), limit=3_000_000)
+    if path is None:
+        raise HTTPException(400, "jpeg")
+    cam.snapshot_path = path
+    from app import clock
+
+    cam.snapshot_at = clock.now()
+    return {"ok": True}
+
+
 @router.post("/edge/config")
 async def edge_config(request: Request, db: Session = Depends(get_db)):
     """Edge agentga qaysi kanallar/hududlar kuzatilishini aytadi."""
@@ -106,7 +129,13 @@ async def edge_config(request: Request, db: Session = Depends(get_db)):
     return {
         "channels": sorted({c.channel for c in cams}),
         "zones": [
-            {"channel": z.camera.channel, "region_id": z.region_id, "kind": z.kind, "room": z.room.number if z.room else None}
+            {
+                "channel": z.camera.channel,
+                "region_id": z.region_id,
+                "kind": z.kind,
+                "room": z.room.number if z.room else None,
+                "polygon": z.polygon,
+            }
             for z in zones
         ],
     }

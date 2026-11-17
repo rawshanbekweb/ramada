@@ -42,7 +42,7 @@ Har bir funksional talab kodning qaysi joyida bajarilgani va qaysi test bilan te
 | ID | Qayerda |
 |---|---|
 | FT-30 | `CameraZone`; panel → Xonalar va zonalar (faqat ega) |
-| FT-31 | `edge/agent.py` (ISAPI alertStream) → `POST /api/edge/events` |
+| FT-31 | `edge/` → `POST /api/edge/events`. Manbalar: `rtsp` (mini-PC'dagi tahlil, `edge/motion.py`), `hikvision` (ISAPI), `dahua` (CGI), `onvif` (PullPoint). TT'da Hikvision ko'rsatilgan; buyurtmachi talabiga ko'ra tizim brendga bog'lanmagan |
 | FT-32 | `entry.open_window` (10..120 daqiqa), `_confirm_entry` + video havola |
 | FT-33 | `entry.sweep_windows` (R1), `process_door_event` (R3) |
 | FT-34 | `process_door_event` (R2), farrosh sessiyasi bo'lsa hisobga olinmaydi |

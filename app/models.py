@@ -335,6 +335,8 @@ class Camera(Base):
     status_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     last_event_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     tampered: Mapped[bool] = mapped_column(Boolean, default=False)  # yopilgan / signal yo'q
+    snapshot_path: Mapped[str | None] = mapped_column(String(255))  # zonalarni chizish uchun oxirgi kadr
+    snapshot_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
 
 
 class CameraZone(Base):
@@ -347,6 +349,8 @@ class CameraZone(Base):
     region_id: Mapped[int] = mapped_column(Integer)  # ISAPI regionID / lineID
     kind: Mapped[str] = mapped_column(String(20), default=ZoneKind.DOOR)
     room_id: Mapped[int | None] = mapped_column(ForeignKey("rooms.id"))
+    # Oddiy (RTSP) kameralar uchun: kadr ustida chizilgan eshik zonasi, nisbiy [[x, y], ...]
+    polygon: Mapped[list | None] = mapped_column(JSON)
 
     camera: Mapped[Camera] = relationship()
     room: Mapped[Room | None] = relationship(back_populates="zones")

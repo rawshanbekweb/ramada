@@ -48,9 +48,10 @@ EDGE_HEARTBEAT_KEY = "edge_last_heartbeat"
 EDGE_OFFLINE_SINCE_KEY = "edge_offline_alerted"
 EDGE_SYNCED_KEY = "edge_synced_at"  # edge navbati oxirgi marta bo'sh bo'lgan vaqt
 
-STRONG_TYPES = {"fielddetection", "intrusion"}
-LINE_TYPES = {"linedetection", "linecrossing"}
-HEALTH_TYPES = {"videoloss", "shelteralarm", "tamper", "videotampering"}
+# Kanonik turlar (edge yuboradi) va eski Hikvision nomlari
+STRONG_TYPES = {"dwell", "fielddetection", "intrusion", "wanderdetection", "loitering"}
+LINE_TYPES = {"line", "linedetection", "linecrossing", "crosslinedetection"}
+HEALTH_TYPES = {"videoloss", "shelteralarm", "tamper", "videotampering", "videoblind"}
 HUMAN_TARGETS = {"human", "person", "people", "pedestrian"}
 
 
@@ -456,13 +457,16 @@ def process_health_event(db: Session, ev: ZoneEvent, camera: Camera | None) -> N
     """Kamera yopildi (shelteralarm) yoki signal yo'qoldi (videoloss)."""
     etype = ev.event_type.lower()
     source = "videoloss" if etype == "videoloss" else "tamper"
+    reason = (ev.raw or {}).get("reason")
     label = _cam_label(camera, ev.channel)
     if ev.state == "active":
         _open_gap(db, ev.channel, source, ev.occurred_at)
         if camera is not None:
             camera.tampered = True
         ev.verdict = f"health:{source}"
-        what = "videosignal yo'qoldi" if source == "videoloss" else "kamera yopildi yoki burildi"
+        what = {"covered": "kamera yopildi (tasvir qorong'i)", "moved": "kamera burildi (sahna o'zgardi)"}.get(
+            reason, "videosignal yo'qoldi" if source == "videoloss" else "kamera yopildi yoki burildi"
+        )
         alerts.raise_alert(
             db, "R12",
             f"{label}: {what}! Shu koridordagi eshiklar kuzatilmayapti. Kimdir kamerani to'sgan bo'lishi mumkin.",
@@ -499,13 +503,17 @@ def heartbeat(db: Session, payload: dict | None = None) -> None:
             start, end = _parse_dt(g.get("start")), _parse_dt(g.get("end"))
             if start is None:
                 continue
+            ch = g.get("channel")
+            ch = int(ch) if ch is not None else None
             row = db.scalar(
                 select(CoverageGap).where(
-                    CoverageGap.channel.is_(None), CoverageGap.source == "stream", CoverageGap.start_at == start
+                    CoverageGap.channel.is_(None) if ch is None else CoverageGap.channel == ch,
+                    CoverageGap.source == "stream",
+                    CoverageGap.start_at == start,
                 )
             )
             if row is None:
-                db.add(CoverageGap(channel=None, source="stream", start_at=start, end_at=end))
+                db.add(CoverageGap(channel=ch, source="stream", start_at=start, end_at=end))
             elif row.end_at is None and end is not None:
                 row.end_at = end
         db.flush()
