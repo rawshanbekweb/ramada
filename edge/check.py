@@ -17,7 +17,8 @@ from urllib.parse import quote
 def hikvision_url(host: str, user: str, password: str, channel: int = 1, sub: bool = True, port: int = 554) -> str:
     """Hikvision RTSP manzili. Kamera: channel=1; NVR: kamera raqami (1, 2, 3...)."""
     stream = f"{channel}0{2 if sub else 1}"
-    return f"rtsp://{quote(user, safe='')}:{quote(password, safe='')}@{host}:{port}/Streaming/Channels/{stream}"
+    hostport = host if ":" in host else f"{host}:{port}"
+    return f"rtsp://{quote(user, safe='')}:{quote(password, safe='')}@{hostport}/Streaming/Channels/{stream}"
 
 
 def check(url: str, out: str, seconds: float = 5.0) -> int:

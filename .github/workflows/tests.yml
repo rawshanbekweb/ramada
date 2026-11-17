@@ -44,3 +44,15 @@ jobs:
           alembic check
           alembic downgrade base
       - run: pytest -W ignore::DeprecationWarning
+
+  e2e:
+    # Server + haqiqiy edge agent + virtual kameralar (MJPEG va soxta Hikvision)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev,edge]"
+      - run: python -W ignore -m tools.e2e_local

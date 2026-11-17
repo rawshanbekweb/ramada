@@ -69,3 +69,15 @@ def test_moved_camera_tamper():
     other = np.random.default_rng(7).integers(0, 256, size=(H, W)).astype(np.uint8)  # butunlay boshqa sahna
     ev = run(det, [base] * 10 + [other] * 40)
     assert any(e["type"] == "tamper" and e["reason"] == "moved" for e in ev)
+
+
+def test_lights_switch_is_not_motion():
+    """Chiroq yoqildi/o'chdi yoki kamera tungi (IK) rejimga o'tdi — butun kadr o'zgaradi, eshikda hodisa yo'q."""
+    base = scene()
+    det = MotionDetector([DOOR, DOOR2], H, W)
+    darker = (base * 0.55).astype(np.uint8)
+    ev = run(det, [base] * 10 + [darker] * 30 + [base] * 30)
+    assert not [e for e in ev if e["type"] in ("enter", "dwell")]
+    # Yorug'lik o'zgargandan keyin ham haqiqiy odam aniqlanadi
+    ev = run(det, [with_person(base, 20)] * 20, t0=100)
+    assert [e["type"] for e in ev if e.get("region_id") == 1] == ["enter", "dwell"]

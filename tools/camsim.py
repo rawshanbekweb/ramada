@@ -18,6 +18,7 @@ Boshqaruv (JSON POST /control):
     {"cam": 1, "action": "pass"}                               # koridordan o'tib ketish
     {"cam": 1, "action": "cover", "seconds": 20}               # kamerani yopish
     {"cam": 1, "action": "offline", "seconds": 20}             # kamera o'chdi
+    {"cam": 1, "action": "lights", "level": 0.5, "seconds": 10} # chiroq o'chdi (yorqinlik 50%)
     {"hik": true, "channel": 2, "type": "fielddetection", "region": 3}
     {"hik": true, "channel": 2, "type": "shelteralarm", "state": "active"}
 
@@ -103,6 +104,8 @@ class Camera:
         self.actors: list[Actor] = []
         self.covered_until = 0.0
         self.offline_until = 0.0
+        self.dim_until = 0.0
+        self.dim_level = 1.0
         self.base = self._background()
         self.lock = threading.Lock()
 
@@ -135,6 +138,9 @@ class Camera:
                 self.actors.append(Actor("pass", None, now, float(cmd.get("seconds", 3))))
             elif a == "cover":
                 self.covered_until = now + float(cmd.get("seconds", 20))
+            elif a == "lights":  # chiroq o'chdi / tungi rejim (yorqinlik keskin o'zgaradi)
+                self.dim_level = float(cmd.get("level", 0.5))
+                self.dim_until = now + float(cmd.get("seconds", 10))
             elif a == "offline":
                 self.offline_until = now + float(cmd.get("seconds", 20))
             self.actors = [x for x in self.actors if now - x.start < x.seconds + 1]
@@ -145,7 +151,7 @@ class Camera:
             dark = np.full((H, W, 3), 8, np.uint8)
             return (dark + self.rng.integers(0, 3, size=dark.shape)).astype(np.uint8)
         # yorug'likning sekin o'zgarishi (±4%) va sensor shovqini
-        light = 1 + 0.04 * np.sin(t / 20)
+        light = (1 + 0.04 * np.sin(t / 20)) * (self.dim_level if t < self.dim_until else 1.0)
         img = self.base * light + self.rng.normal(0, 4, size=self.base.shape)
         with self.lock:
             actors = list(self.actors)

@@ -24,7 +24,9 @@ from pathlib import Path
 import httpx
 
 ROOT = Path(__file__).resolve().parents[1]
-CAM_PORT, WEB_PORT = 8601, 8610
+CAM_PORT, WEB_PORT, RTSP_PORT = 8601, 8610, 8554
+# --rtsp: kameralar haqiqiy RTSP/H.264 orqali (tools/rtsp_relay.py, GStreamer kerak)
+USE_RTSP = "--rtsp" in sys.argv
 TMP = Path(tempfile.mkdtemp(prefix="shaffof-e2e-"))
 ENV = dict(
     os.environ,
@@ -112,6 +114,12 @@ def setup_db():
                     db.add(CameraZone(camera_id=c.id, region_id=i, kind=ZoneKind.DOOR, room_id=rooms[f"30{i}"].id))
 
 
+def cam_url(i: int) -> str:
+    if USE_RTSP:
+        return f"rtsp://admin:Sim12345@127.0.0.1:{RTSP_PORT}/Streaming/Channels/{i}02"
+    return f"http://127.0.0.1:{CAM_PORT}/cam{i}.mjpg"
+
+
 def write_edge_config() -> Path:
     cfg = TMP / "edge.toml"
     cfg.write_text(f'''
@@ -124,13 +132,13 @@ config_refresh_seconds = 3
 [[sources]]
 type = "rtsp"
 channel = 1
-url = "http://127.0.0.1:{CAM_PORT}/cam1.mjpg"
+url = "{cam_url(1)}"
 fps = 8
 
 [[sources]]
 type = "rtsp"
 channel = 2
-url = "http://127.0.0.1:{CAM_PORT}/cam2.mjpg"
+url = "{cam_url(2)}"
 fps = 8
 
 [[sources]]
@@ -219,6 +227,19 @@ def scenario() -> None:
     check("Hikvision kanallari holati keldi (onlayn)", hb)
     time.sleep(4)  # harakat tahlili fonni o'rgansin
 
+    print("\n▶ 1b. Bo'sh koridor: 60 soniya shovqin va yorug'likning sekin o'zgarishi")
+    n0 = db_get(lambda s: len(s.scalars(select(ZoneEvent.id).where(ZoneEvent.kind == "door")).all()))
+    time.sleep(60)
+    n1 = db_get(lambda s: len(s.scalars(select(ZoneEvent.id).where(ZoneEvent.kind == "door")).all()))
+    check("Bo'sh koridorda birorta ham eshik hodisasi yo'q", n1 == n0, f"{n1 - n0} ta hodisa")
+
+    print("\n▶ 1c. Koridorda chiroq o'chdi va yondi (ikkala kamera)")
+    for c in (1, 2):
+        cam({"cam": c, "action": "lights", "level": 0.45, "seconds": 8})
+    time.sleep(14)
+    n2 = db_get(lambda s: len(s.scalars(select(ZoneEvent.id).where(ZoneEvent.kind == "door")).all()))
+    check("Chiroq o'chib-yonishi yolg'on signal bermadi", n2 == n1, f"{n2 - n1} ta hodisa")
+
     print("\n▶ 2. Mehmon to'ladi va o'z xonasiga kirdi (102, 1-kamera, 2-eshik)")
     b1, _ = make_paid_booking("102", "+998901000001")
     check("To'lov va mehmon tasdig'idan keyin bron 1/3", stage(b1) == 1)
@@ -305,6 +326,10 @@ def main() -> int:
     setup_db()
     start("camsim", [sys.executable, "-m", "tools.camsim", "--port", str(CAM_PORT), "--cameras", "2"])
     start("web", [sys.executable, "-m", "uvicorn", "app.main:app", "--port", str(WEB_PORT)])
+    if USE_RTSP:
+        start("relay", ["/usr/bin/python3.12", "tools/rtsp_relay.py", "--port", str(RTSP_PORT), "--cameras", "2"])
+        time.sleep(2)
+    print("Kameralar:", cam_url(1), cam_url(2))
     if not wait_until(lambda: _up(f"http://127.0.0.1:{WEB_PORT}/api/health") and _up(f"http://127.0.0.1:{CAM_PORT}/zones.json"), 30):
         print("Server yoki simulyator ishga tushmadi")
         return 2

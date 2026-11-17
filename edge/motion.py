@@ -8,6 +8,8 @@ kadrlari mini-PC'da tahlil qilinadi. Har bir eshik uchun panelda chizilgan ko'pb
 * ``dwell``  — zonada harakat ``dwell_seconds`` dan uzoq davom etdi: odam eshik oldida
   to'xtab, eshikni ochdi (kuchli dalil);
 * ``line``   — asosiy kirish zonasidan o'tish (kirishlar sanog'i uchun);
+* chiroq yoqilishi/o'chishi va tungi (IK) rejimga o'tish butun kadrni o'zgartiradi —
+  bu harakat emas: fon qaytadan o'rganiladi, eshiklarda hodisa berilmaydi;
 * ``tamper`` — kamera yopildi (kadr deyarli bir xil rangda) yoki burildi
   (sahna ma'lumotnoma kadrdan uzoq vaqt keskin farq qiladi).
 
@@ -63,6 +65,8 @@ class MotionConfig:
     covered_seconds: float = 10.0
     moved_diff: float = 45.0  # ma'lumotnoma kadrdan o'rtacha farq — kamera burilgan
     moved_seconds: float = 60.0
+    global_change_fraction: float = 0.35  # kadrning shuncha qismi birdan o'zgarsa — yorug'lik, odam emas
+    settle_seconds: float = 1.5  # yorug'lik o'zgargandan keyin kamera ekspozitsiyasi barqarorlashishi
 
 
 @dataclass
@@ -85,6 +89,8 @@ class MotionDetector:
         self.moved_since: float | None = None
         self.tampered = False
         self.relearn = False
+        self.settle_until = 0.0
+        self.light_changes = 0
 
     # --------------------------------------------------------------- tamper
     def _tamper(self, gray: np.ndarray, t: float) -> list[dict]:
@@ -140,6 +146,18 @@ class MotionDetector:
                 z.sent_enter = z.sent_dwell = False
             return events
         diff = np.abs(frame - self.bg) > self.cfg.pixel_threshold
+        if float(diff.mean()) > self.cfg.global_change_fraction:
+            # Chiroq yoqildi/o'chdi, tungi (IK) rejim, avto-ekspozitsiya: fonni qayta o'rganamiz
+            self.bg = frame
+            self.settle_until = t + self.cfg.settle_seconds
+            self.light_changes += 1
+            for z in self.zones:
+                z.active_since = z.last_motion = None
+                z.sent_enter = z.sent_dwell = False
+            return events
+        if t < self.settle_until:
+            self.bg = frame  # ekspozitsiya barqarorlashguncha fon kadrga ergashadi
+            return events
         self.bg = (1 - self.cfg.bg_alpha) * self.bg + self.cfg.bg_alpha * frame
         for z in self.zones:
             frac = float(diff[z.mask].mean()) if z.mask.any() else 0.0
