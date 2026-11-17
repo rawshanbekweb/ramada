@@ -54,6 +54,8 @@ from app.web.common import templates
 
 router = APIRouter(prefix="/panel")
 COOKIE = "sq_panel"
+LOGIN_MAX_FAILURES = 5
+LOGIN_LOCK_MINUTES = 15
 
 
 class NeedLogin(Exception):
@@ -109,9 +111,29 @@ def login_page(request: Request):
 
 @router.post("/login")
 def login(request: Request, login: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
-    user = db.scalar(select(User).where(User.login == login.strip(), User.active.is_(True)))
+    login = login.strip()[:40]
+    ip = request.client.host if request.client else "?"
+    since = clock.now() - timedelta(minutes=LOGIN_LOCK_MINUTES)
+    failures = db.scalar(
+        select(func.count(AuditLog.id)).where(
+            AuditLog.action == "panel.login_failed", AuditLog.object_id == login, AuditLog.at >= since
+        )
+    )
+    if failures >= LOGIN_MAX_FAILURES:
+        return templates.TemplateResponse(
+            request, "panel/login.html",
+            {"error": f"Urinishlar ko'p. {LOGIN_LOCK_MINUTES} daqiqadan keyin qayta urinib ko'ring.", "user": None},
+            status_code=429,
+        )
+    user = db.scalar(select(User).where(User.login == login, User.active.is_(True)))
     if user is None or user.role not in (Role.OWNER, Role.ADMIN) or not verify_password(password, user.password_hash):
-        audit.log(db, "anon", "panel.login_failed", object_type="users", object_id=login[:40])
+        audit.log(db, "anon", "panel.login_failed", object_type="users", object_id=login, new={"ip": ip})
+        if failures + 1 == LOGIN_MAX_FAILURES:
+            from app.services import notify
+
+            for o in notify.owners(db):
+                notify.later(db, o.telegram_id, f"🔐 Panelga «{login}» logini bilan {LOGIN_MAX_FAILURES} marta noto'g'ri "
+                                                f"parol kiritildi (IP {ip}). Kirish {LOGIN_LOCK_MINUTES} daqiqaga bloklandi.")
         return templates.TemplateResponse(
             request, "panel/login.html", {"error": "Login yoki parol noto'g'ri", "user": None}, status_code=401
         )

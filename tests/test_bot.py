@@ -141,3 +141,17 @@ def test_housekeeper_morning_and_owner_alert_ack(db, staff):
     assert db.get(Alert, a.id).status == "ack"
     o.send("📊 Bugun")
     assert any("Hozir" in x for x in o.session.texts())
+
+
+def test_menu_button_resets_unfinished_flow(db, staff):
+    h = Harness(1003)  # reception
+    h.send("💵 Smena")
+    h.send("0")
+    h.send("🆕 Yangi mehmon")
+    room_cb = [b for b in h.last_buttons() if b.startswith("ng:room:")][0]
+    h.click(room_cb)  # endi «Necha tun?» kutilmoqda
+    h.send("📋 Mehmonlar")  # jarayon tashlab ketildi
+    before = len(h.session.calls)
+    h.send("3")  # eski jarayonga «3 tun» bo'lib yozilmasligi kerak
+    texts = [getattr(c, "text", "") or "" for c in h.session.calls[before:]]
+    assert not any("F.I.Sh" in t for t in texts)

@@ -110,3 +110,17 @@ def test_camera_calibration_bind_flow(db, staff):
     r = c.get(f"/panel/events/{ev.id}")
     assert r.status_code == 200 and "Dalil kuchi" in r.text
     assert "Ramada" in r.text
+
+
+def test_panel_login_lockout(db, staff, telegram):
+    c = TestClient(app, base_url="https://hotel.test")
+    for _ in range(5):
+        assert c.post("/panel/login", data={"login": "owner", "password": "x"}).status_code == 401
+    assert any("bloklandi" in m["text"] for m in telegram.sent if m["chat_id"] == 1001)
+    # To'g'ri parol bilan ham — vaqtincha blok
+    assert c.post("/panel/login", data={"login": "owner", "password": "owner-pass-1"}).status_code == 429
+    from app import clock
+
+    clock.advance(minutes=16)
+    r = c.post("/panel/login", data={"login": "owner", "password": "owner-pass-1"}, follow_redirects=False)
+    assert r.status_code == 303

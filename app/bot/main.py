@@ -7,13 +7,14 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from app.bot import h_common, h_housekeeping, h_manager, h_reception
-from app.bot.common import DbUserMiddleware
+from app.bot.common import DbUserMiddleware, MenuResetMiddleware
 from app.config import get_settings
 
 
 def build_dispatcher() -> Dispatcher:
     dp = Dispatcher(storage=MemoryStorage())
     dp.update.outer_middleware(DbUserMiddleware())
+    dp.message.outer_middleware(MenuResetMiddleware())
     dp.include_router(h_common.router)
     dp.include_router(h_manager.router)
     dp.include_router(h_housekeeping.router)

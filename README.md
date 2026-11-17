@@ -23,6 +23,8 @@ Biror bosqich o'tmasa yoki bronsiz xonada faollik bo'lsa, ega Telegram orqali da
 | Migratsiyalar | `migrations/` | — |
 | Testlar (TT 16-bo'lim, 12 ta sinov va boshqalar) | `tests/` | — |
 
+Xodimlar uchun qo'llanmalar: [docs/qollanma/](docs/qollanma/) (o'zbek, rus). Mini-PC o'rnatish: `sudo bash edge/install.sh`.
+
 TT talablari kodning qaysi joyida bajarilgani [docs/TT_MUVOFIQLIK.md](docs/TT_MUVOFIQLIK.md) faylida ko'rsatilgan.
 
 ## Tez ishga tushirish (ishlab chiqish)

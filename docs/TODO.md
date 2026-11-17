@@ -10,6 +10,7 @@ Bu ishlar dasturdan tashqarida qoladi yoki buyurtmachining ma'lumotini talab qil
 - [ ] Qoraqalpoqcha matnlarni ona tilida so'zlashuvchiga tekshirtirish (`app/i18n/messages.py`, `kaa` kalitlari).
 - [ ] Agar `hikvision`/`dahua`/`onvif` manbasi ishlatilsa — haqiqiy qurilmada hodisa formatini tekshirish (firmware'ga qarab farq qiladi).
 - [ ] Eskiz.uz'da SMS shablonlarini tasdiqlatish.
-- [ ] Qo'llanmalar (qoraqalpoq, o'zbek, rus): reception, farrosh, ega (TT 17-bo'lim).
+- [x] Qo'llanmalar o'zbek va rus tillarida: `docs/qollanma/` (reception, farrosh, ega).
+- [ ] Qo'llanmalarning qoraqalpoqcha tarjimasi (ona tilida so'zlashuvchi bilan).
 - [ ] Pilotda ogohlantirish chegaralarini sozlash: noto'g'ri signallar haftasiga 3 tadan oshmasligi kerak.
 - [ ] Ixtiyoriy: OFD fiskal chekni avtomatik tekshirish (hozir chek raqami qo'lda kiritiladi).

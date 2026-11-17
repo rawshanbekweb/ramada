@@ -106,3 +106,32 @@ def parse_int(text: str | None) -> int | None:
     if not digits or len(digits) > 12:
         return None
     return int(digits)
+
+
+MENU_KEYS = sorted({k for rows in MENUS.values() for row in rows for k in row})
+
+
+class MenuResetMiddleware(BaseMiddleware):
+    """Jarayon o'rtasida asosiy menyu tugmasi bosilsa — eski holat (FSM) tozalanadi.
+
+    Aks holda, masalan, «Necha tun?» savolidan keyin «📋 Mehmonlar» bosilsa, keyingi
+    raqam eski jarayonga yozilib ketardi.
+    """
+
+    async def __call__(self, handler, event, data):
+        state = data.get("state")
+        text = getattr(event, "text", None)
+        if state is not None and text and text in _menu_texts():
+            if await state.get_state() is not None:
+                await state.clear()
+        return await handler(event, data)
+
+
+_MENU_TEXTS: set[str] | None = None
+
+
+def _menu_texts() -> set[str]:
+    global _MENU_TEXTS
+    if _MENU_TEXTS is None:
+        _MENU_TEXTS = set().union(*(texts(k) for k in MENU_KEYS))
+    return _MENU_TEXTS
