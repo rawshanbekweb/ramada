@@ -228,3 +228,10 @@ def timedelta_min(m):
     from datetime import timedelta
 
     return timedelta(minutes=m)
+
+
+def test_hikvision_rtsp_url_helper():
+    from edge.check import hikvision_url
+
+    assert hikvision_url("192.168.1.64", "admin", "Ab@12#x", 1) == "rtsp://admin:Ab%4012%23x@192.168.1.64:554/Streaming/Channels/102"
+    assert hikvision_url("192.168.1.100", "admin", "p", 7, sub=False).endswith("/Streaming/Channels/701")

@@ -10,6 +10,7 @@ Talab: `pip install opencv-python-headless numpy`. Intel N100 kabi oddiy mini-PC
 from __future__ import annotations
 
 import logging
+import os
 import threading
 import time
 from datetime import datetime, timezone
@@ -51,6 +52,10 @@ class RtspSource:
         await asyncio.to_thread(self._loop, ThreadSink())
 
     def _loop(self, sink) -> None:
+        # TCP: UDP'da yo'qolgan paketlar kadrda «yolg'on harakat» (artefakt) beradi
+        os.environ.setdefault(
+            "OPENCV_FFMPEG_CAPTURE_OPTIONS", f"rtsp_transport;{self.cfg.get('rtsp_transport', 'tcp')}|stimeout;5000000"
+        )
         import cv2  # noqa: PLC0415 — faqat rtsp manbasi uchun kerak
 
         backoff = 2
