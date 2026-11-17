@@ -155,3 +155,19 @@ def test_menu_button_resets_unfinished_flow(db, staff):
     h.send("3")  # eski jarayonga «3 tun» bo'lib yozilmasligi kerak
     texts = [getattr(c, "text", "") or "" for c in h.session.calls[before:]]
     assert not any("F.I.Sh" in t for t in texts)
+
+
+def test_owner_cash_collection_in_bot(db, staff):
+    from app.services import shifts
+
+    shifts.open_shift(db, staff["reception"], 500_000)
+    db.commit()
+    o = Harness(1001)
+    o.send("💰 Inkassatsiya")
+    cb = [b for b in o.last_buttons() if b.startswith("cc:")][0]
+    o.click(cb)
+    o.send("400000")
+    assert any("Yozildi" in x for x in o.session.texts())
+    db.expire_all()
+    sh = shifts.current_shift(db, staff["reception"])
+    assert shifts.expected_cash(db, sh) == 100_000

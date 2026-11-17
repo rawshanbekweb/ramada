@@ -2,9 +2,13 @@
 {% block title %}Smenalar{% endblock %}
 {% block content %}
 <h1>Smenalar</h1>
-<table class="tbl"><tr><th>#</th><th>Xodim</th><th>Ochildi</th><th>Yopildi</th><th>Ochilishda</th><th>Kutilgan</th><th>Sanalgan</th><th>Farq</th><th>Qabul farqi</th></tr>
+<table class="tbl"><tr><th>#</th><th>Xodim</th><th>Ochildi</th><th>Yopildi</th><th>Ochilishda</th><th>Inkassatsiya</th><th>Kutilgan</th><th>Sanalgan</th><th>Farq</th><th>Qabul farqi</th></tr>
 {% for s in rows %}<tr><td>{{ s.id }}</td><td>{{ s.user.full_name }}</td><td>{{ s.opened_at|dt }}</td><td>{{ s.closed_at|dt }}</td>
-<td>{{ s.opening_cash|sum }}</td><td>{{ s.expected_cash|sum }}</td><td>{{ s.counted_cash|sum }}</td>
+<td>{{ s.opening_cash|sum }}</td><td>{{ taken.get(s.id, 0)|sum }}</td>
+<td>{% if s.closed_at %}{{ s.expected_cash|sum }}{% else %}<i>hozir {{ expected_now[s.id]|sum }}</i>
+  <form method="post" action="/panel/shifts/{{ s.id }}/withdraw" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}">
+  <input name="amount" placeholder="Olingan summa" inputmode="numeric" required size="10"><input name="note" placeholder="izoh" size="8">
+  <button class="btn sm ghost">Inkassatsiya</button></form>{% endif %}</td><td>{{ s.counted_cash|sum }}</td>
 <td class="{{ 'err' if s.diff }}">{{ s.diff|sum }}</td><td class="{{ 'err' if s.handover_diff }}">{{ s.handover_diff|sum }}</td></tr>
 {% endfor %}</table>
 {% endblock %}

@@ -178,6 +178,7 @@ def dashboard(request: Request, user: User = Depends(current_user), db: Session 
         alerts=open_alerts,
         d=d,
         edge=entry.edge_status(db),
+        worker=__import__("app.services.maintenance", fromlist=["x"]).worker_status(db),
         pending_discounts=db.scalars(select(Discount).where(Discount.status == "pending")).all(),
         pending_cancels=db.scalars(select(CancelRequest).where(CancelRequest.status == "pending")).all(),
     )
@@ -720,6 +721,8 @@ SETTING_FIELDS = [
     ("checkout_grace_minutes", "Chiqishdan keyingi bag'rikenglik, daqiqa", "int"),
     ("underpaid_grace_minutes", "Kam to'lov (R8) kutish, daqiqa", "int"),
     ("r11_threshold_pp", "R11: o'rtachadan farq, foiz-punkt", "int"),
+    ("passport_photo_days", "Pasport suratini chiqishdan keyin saqlash, kun (0 — doim)", "int"),
+    ("snapshot_days", "Kamera kadrlarini saqlash, kun (0 — doim)", "int"),
     ("keyboard_check_enabled", "Kalit taxtasi foto-tekshiruvi", "bool"),
     ("survey_enabled", "Chiqishda so'rovnoma", "bool"),
 ]
@@ -805,8 +808,25 @@ def staff_update(
 # ------------------------------------------------------------------ shifts, housekeeping, audit
 @router.get("/shifts", response_class=HTMLResponse)
 def shifts_page(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
+    from app.services import shifts as shifts_svc
+
     rows = db.scalars(select(Shift).order_by(Shift.id.desc()).limit(200)).all()
-    return render(request, "shifts.html", rows=rows)
+    taken = {s.id: sum(m.amount for m in shifts_svc.withdrawals(db, s)) for s in rows}
+    expected_now = {s.id: shifts_svc.expected_cash(db, s) for s in rows if s.closed_at is None}
+    return render(request, "shifts.html", rows=rows, taken=taken, expected_now=expected_now)
+
+
+@router.post("/shifts/{sid:int}/withdraw", dependencies=[Depends(check_csrf)])
+def shift_withdraw(sid: int, amount: str = Form(...), note: str = Form(""), user: User = Depends(current_user),
+                   db: Session = Depends(get_db, scope="function")):
+    from app.services import shifts as shifts_svc
+
+    digits = "".join(ch for ch in amount if ch.isdigit())
+    try:
+        shifts_svc.withdraw(db, user, db.get(Shift, sid), int(digits or 0), note)
+    except shifts_svc.ShiftError as e:
+        raise HTTPException(400, str(e))
+    return back("/panel/shifts")
 
 
 @router.get("/housekeeping", response_class=HTMLResponse)

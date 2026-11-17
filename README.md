@@ -36,7 +36,9 @@ python -m app.cli init --owner "Ega Ismi" --login owner --password 'kamida8belgi
 python -m app.cli seed-demo        # 40 xona, 3 toifa, namuna tariflar va kameralar
 uvicorn app.main:app --reload      # http://localhost:8000/panel/
 python -m app.worker               # bot + rejalashtiruvchi (SQ_TELEGRAM_BOT_TOKEN kerak)
-pytest                             # 33 ta test
+pytest                             # unit va integratsiya testlari
+python -m tools.e2e_local          # server + edge agent + virtual kameralar (20 ta vaziyat)
+python -m app.cli demo --days 14   # o'qitish uchun demo tarix (faqat bo'sh bazaga)
 ```
 
 Sukut bo'yicha SQLite ishlatiladi. PostgreSQL bilan ishlatish uchun:

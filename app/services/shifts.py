@@ -5,8 +5,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app import clock
-from app.enums import PaymentMethod, PaymentStatus
-from app.models import Booking, Payment, Shift, User
+from app.enums import PaymentMethod, PaymentStatus, Role
+from app.models import Booking, CashMovement, Payment, Shift, User
 from app.services import alerts, audit, notify
 from app.services.pricing import fmt_sum
 
@@ -58,7 +58,36 @@ def expected_cash(db: Session, shift: Shift) -> int:
             Payment.status == PaymentStatus.PAID,
         )
     )
-    return shift.opening_cash + int(cash_in or 0)
+    taken = db.scalar(
+        select(func.coalesce(func.sum(CashMovement.amount), 0)).where(CashMovement.shift_id == shift.id)
+    )
+    return shift.opening_cash + int(cash_in or 0) - int(taken or 0)
+
+
+def withdrawals(db: Session, shift: Shift) -> list[CashMovement]:
+    return list(db.scalars(select(CashMovement).where(CashMovement.shift_id == shift.id).order_by(CashMovement.id)))
+
+
+def withdraw(db: Session, actor: User, shift: Shift, amount: int, note: str | None = None) -> CashMovement:
+    """Inkassatsiya. Faqat ega yoki administrator; reception va egaga xabar boradi."""
+    if actor.role not in (Role.OWNER, Role.ADMIN):
+        raise ShiftError("Kassadan pulni faqat ega yoki administrator oladi")
+    if shift.closed_at is not None:
+        raise ShiftError("Smena yopilgan")
+    if amount <= 0:
+        raise ShiftError("Summa musbat bo'lishi kerak")
+    m = CashMovement(shift_id=shift.id, amount=amount, user_id=actor.id, note=(note or "").strip()[:200] or None,
+                     at=clock.now())
+    db.add(m)
+    db.flush()
+    audit.log(db, audit.actor_of(actor), "shift.withdraw", m, new={"shift": shift.id, "amount": amount, "note": m.note})
+    text = f"💰 Inkassatsiya: {actor.full_name} kassadan {fmt_sum(amount)} oldi (smena: {shift.user.full_name})."
+    if shift.user.telegram_id:
+        notify.later(db, shift.user.telegram_id, text)
+    for o in notify.owners(db):
+        if o.id != actor.id:
+            notify.later(db, o.telegram_id, text)
+    return m
 
 
 def close_shift(db: Session, user: User, counted_cash: int) -> Shift:

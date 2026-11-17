@@ -94,6 +94,29 @@ def cmd_report(args) -> None:
         print(fn(db))
 
 
+def cmd_demo(args) -> None:
+    from app.demo import DemoError, generate
+
+    create_tables()
+    with session_scope() as db:
+        if not db.scalar(select(Room.id)):
+            cmd_seed_demo(args)
+        try:
+            st = generate(db, days=args.days)
+        except DemoError as e:
+            sys.exit(str(e))
+    print(f"Demo tayyor: {st['bookings']} bron, {st['violations']} ta buzilish holati ({args.days} kun).")
+
+
+def cmd_health(args) -> None:
+    from app.services import maintenance
+
+    with session_scope() as db:
+        st = maintenance.worker_status(db)
+    print("worker:", "ok" if st["ok"] else "TO'XTAGAN", st["last"])
+    sys.exit(0 if st["ok"] else 1)
+
+
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(prog="app.cli")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -108,6 +131,11 @@ def main(argv=None) -> None:
     pr = sub.add_parser("report")
     pr.add_argument("kind", choices=["daily", "weekly", "monthly"])
     pr.set_defaults(fn=cmd_report)
+    pd = sub.add_parser("demo", help="O'qitish uchun demo tarix (faqat bo'sh bazaga!)")
+    pd.add_argument("--days", type=int, default=14)
+    pd.set_defaults(fn=cmd_demo)
+    ph = sub.add_parser("health", help="Worker ishlayaptimi (docker healthcheck)")
+    ph.set_defaults(fn=cmd_health)
     args = p.parse_args(argv)
     args.fn(args)
 

@@ -181,10 +181,17 @@ def shift_report_text(db: Session, shift: Shift) -> str:
         f"🕒 {clock.fmt(shift.opened_at)} → {clock.fmt(shift.closed_at)}",
         f"Joylashtirishlar: {st['total']} · 3/3: {st['s3']} · 2/3: {st['s2']} · 1/3: {st['s1']} · 0/3: {st['s0']}",
         f"To'lovlar: {fmt_sum(rv['total'])} (naqd {fmt_sum(rv['cash'])}, terminal {fmt_sum(rv['terminal'])})",
-        f"Kassa: ochilish {fmt_sum(shift.opening_cash)}, kutilgan {fmt_sum(shift.expected_cash)}, sanalgan {fmt_sum(shift.counted_cash)}",
+        f"Kassa: ochilish {fmt_sum(shift.opening_cash)}, inkassatsiya {fmt_sum(sum(m.amount for m in _withdrawals(db, shift)))}, "
+        f"kutilgan {fmt_sum(shift.expected_cash)}, sanalgan {fmt_sum(shift.counted_cash)}",
         ("✅ Farq yo'q" if not shift.diff else f"❗ Farq: {fmt_sum(shift.diff)}"),
     ]
     return "\n".join(lines)
+
+
+def _withdrawals(db: Session, shift: Shift):
+    from app.services.shifts import withdrawals
+
+    return withdrawals(db, shift)
 
 
 # ------------------------------------------------------------------ staff (FT-44, R11)

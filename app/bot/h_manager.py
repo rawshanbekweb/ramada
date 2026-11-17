@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from aiogram import F, Router
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy import select
 
@@ -12,6 +14,10 @@ from app.models import Alert, CancelRequest, Discount, PayLaterRequest
 from app.services import alerts, bookings, discounts, notify, reports
 
 router = Router(name="manager")
+
+
+class Collect(StatesGroup):
+    amount = State()
 MANAGERS = (Role.OWNER, Role.ADMIN)
 
 
@@ -141,3 +147,47 @@ async def pending_requests(message: Message, db, user, lang):
     if not sent:
         await message.answer("—")
 
+
+
+# ------------------------------------------------------------------ inkassatsiya
+@router.message(btn("m.collect"))
+async def collect_start(message: Message, db, user, lang):
+    from app.models import Shift
+    from app.services.pricing import fmt_sum
+    from app.services.shifts import expected_cash
+
+    if not role_in(user, *MANAGERS):
+        return await deny(message, lang)
+    open_shifts = db.scalars(select(Shift).where(Shift.closed_at.is_(None))).all()
+    if not open_shifts:
+        return await message.answer(t("cash.none", lang))
+    rows = [[(f"{s.user.full_name} · {fmt_sum(expected_cash(db, s))}", f"cc:{s.id}")] for s in open_shifts]
+    await message.answer(t("cash.choose", lang), reply_markup=ikb(rows))
+
+
+@router.callback_query(F.data.startswith("cc:"))
+async def collect_pick(cb: CallbackQuery, user, lang, state: FSMContext):
+    if not role_in(user, *MANAGERS):
+        return await deny(cb, lang)
+    await state.set_state(Collect.amount)
+    await state.update_data(shift_id=int(cb.data[3:]))
+    await cb.message.answer(t("cash.amount", lang))
+    await cb.answer()
+
+
+@router.message(Collect.amount)
+async def collect_amount(message: Message, db, user, lang, state: FSMContext):
+    from app.bot.common import main_menu, parse_int
+    from app.models import Shift
+    from app.services import shifts
+    from app.services.pricing import fmt_sum
+
+    amount = parse_int(message.text)
+    data = await state.get_data()
+    await state.clear()
+    try:
+        shifts.withdraw(db, user, db.get(Shift, data["shift_id"]), amount or 0)
+    except shifts.ShiftError as e:
+        db.rollback()
+        return await message.answer(t("bot.error", lang, err=str(e)), reply_markup=main_menu(user))
+    await message.answer(t("cash.done", lang, amount=fmt_sum(amount)), reply_markup=main_menu(user))

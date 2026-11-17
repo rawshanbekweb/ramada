@@ -22,7 +22,28 @@ router = APIRouter(prefix="/api")
 
 
 @router.get("/health")
-def health():
+def health(db: Session = Depends(get_db, scope="function")):
+    """Tashqi monitoring (masalan, UptimeRobot) va docker healthcheck uchun.
+
+    503 — worker (ogohlantirishlar, hisobotlar, bot) to'xtagan yoki baza ishlamayapti.
+    """
+    from fastapi.responses import JSONResponse
+
+    from app.services import maintenance
+
+    w = maintenance.worker_status(db)
+    e = entry.edge_status(db)
+    body = {
+        "ok": w["ok"],
+        "worker": {"ok": w["ok"], "last": w["last"].isoformat() if w["last"] else None},
+        "edge": {"ok": e["online"], "last": e["last"].isoformat() if e["last"] else None},
+    }
+    return JSONResponse(body, status_code=200 if w["ok"] else 503)
+
+
+@router.get("/ping")
+def ping():
+    """Faqat web jarayoni tirikligi (docker healthcheck)."""
     return {"ok": True}
 
 

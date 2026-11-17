@@ -330,7 +330,7 @@ def main() -> int:
         start("relay", ["/usr/bin/python3.12", "tools/rtsp_relay.py", "--port", str(RTSP_PORT), "--cameras", "2"])
         time.sleep(2)
     print("Kameralar:", cam_url(1), cam_url(2))
-    if not wait_until(lambda: _up(f"http://127.0.0.1:{WEB_PORT}/api/health") and _up(f"http://127.0.0.1:{CAM_PORT}/zones.json"), 30):
+    if not wait_until(lambda: _up(f"http://127.0.0.1:{WEB_PORT}/api/ping") and _up(f"http://127.0.0.1:{CAM_PORT}/zones.json"), 30):
         print("Server yoki simulyator ishga tushmadi")
         return 2
     start("edge", [sys.executable, "-m", "edge.agent", "--config", str(write_edge_config())])

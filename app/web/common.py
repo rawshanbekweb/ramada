@@ -45,4 +45,12 @@ def _calibration_on() -> bool:
         return entry.calibration_active(s)
 
 
-env.globals.update(hotel_name=_hotel_name, calibration_on=_calibration_on)
+def _demo_data() -> bool:
+    from app.db import SessionLocal
+    from app.services import settings_svc as cfg
+
+    with SessionLocal() as s:
+        return bool(cfg.state_get(s, "demo_data"))
+
+
+env.globals.update(hotel_name=_hotel_name, calibration_on=_calibration_on, demo_data=_demo_data)

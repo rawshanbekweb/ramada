@@ -41,6 +41,12 @@ Botdagi «📝 So'rovlar» tugmasi kutilayotgan barcha so'rovlarni ko'rsatadi.
 | Xodimlar | Qo'shish, taklif kodi, o'chirish |
 | Jurnal | Kim, qachon, nimani o'zgartirgani (o'chirib bo'lmaydi) |
 
+## Kassadan pul olish (inkassatsiya)
+
+Kassadan tushumni olsangiz, albatta yozing: botda «💰 Inkassatsiya» → smenani tanlang → summani kiriting. Panelda ham xuddi shunday: Smenalar → «Inkassatsiya».
+
+Yozilmasa, smena yopilganda yoki keyingi smena qabul qilinganda yolg'on «kassa farqi» (R9) chiqadi. Reception'ga ham avtomatik xabar boradi.
+
 ## Muntazam ishlar
 
 - **Wi-Fi paroli:** oyiga bir marta almashtiring (Sozlamalar). Mehmonlar uni faqat QR orqali oladi.
@@ -50,4 +56,5 @@ Botdagi «📝 So'rovlar» tugmasi kutilayotgan barcha so'rovlarni ko'rsatadi.
   - kimda kassa farqi bor.
 - **Oyiga bir marta** «sirli mehmon» tekshiruvi.
 - **Xodim ishdan ketsa:** Xodimlar → «O'chirish». Uning Telegram bilan bog'lanishi darhol uziladi.
+- **Panelda «⚠️ Worker ishlamayapti» chiqsa:** ogohlantirishlar va bot to'xtagan. Texnik xodimga ayting (`docker compose restart worker`).
 - **QR plita yo'qolsa yoki nusxalangan deb gumon qilinsa:** Xonalar → «Yangilash». Eski QR yaroqsiz bo'ladi, yangisini chop eting.

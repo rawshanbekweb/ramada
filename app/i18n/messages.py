@@ -202,6 +202,11 @@ MESSAGES: dict[str, dict[str, str]] = {
     "m.cleaning": {"uz": "🧽 Tozalash", "kaa": "🧽 Tazalaw", "ru": "🧽 Уборка"},
     "m.qr_plates": {"uz": "🔲 QR plitalar", "kaa": "🔲 QR plitalar", "ru": "🔲 QR-таблички"},
     "m.linen": {"uz": "🧺 Choyshab", "kaa": "🧺 Shoyshap", "ru": "🧺 Бельё"},
+    "m.collect": {"uz": "💰 Inkassatsiya", "kaa": "💰 Inkassaciya", "ru": "💰 Инкассация"},
+    "cash.choose": {"uz": "Qaysi smena kassasidan?", "kaa": "Qaysı smena kassasınan?", "ru": "Из кассы какой смены?"},
+    "cash.none": {"uz": "Ochiq smena yo'q.", "kaa": "Ashıq smena joq.", "ru": "Открытых смен нет."},
+    "cash.amount": {"uz": "Olinayotgan summa (so'm):", "kaa": "Alınıp atırǵan summa (swm):", "ru": "Сумма изъятия (сум):"},
+    "cash.done": {"uz": "✅ Yozildi: {amount}. Reception'ga xabar berildi.", "kaa": "✅ Jazıldı: {amount}. Resepshnǵa xabar berildi.", "ru": "✅ Записано: {amount}. Ресепшн уведомлён."},
     "m.lang": {"uz": "🌐 Til", "kaa": "🌐 Til", "ru": "🌐 Язык"},
     # Yangi mehmon jarayoni
     "ng.need_shift": {"uz": "Avval smenani oching (💵 Smena).", "kaa": "Aldın smenanı ashıń (💵 Smena).", "ru": "Сначала откройте смену (💵 Смена)."},

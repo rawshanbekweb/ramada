@@ -29,6 +29,7 @@
   </nav>
   <span class="me">{{ user.full_name }} · {{ ROLE_UZ[user.role] }} · <a href="/panel/logout">Chiqish</a></span>
 </header>
+{% if demo_data() %}<div class="banner">🎓 DEMO ma'lumotlar — o'qitish uchun. Haqiqiy ish uchun yangi baza ishlating.</div>{% endif %}
 {% if calibration_on() %}<div class="banner">🛠 Zona sozlash rejimi yoqilgan — bronsiz xonadagi harakat (R2/R3) vaqtincha ogohlantirilmaydi. <a href="/panel/cameras">Kameralar</a></div>{% endif %}
 {% endif %}
 <main class="main">

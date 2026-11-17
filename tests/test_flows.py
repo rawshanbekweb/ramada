@@ -184,3 +184,27 @@ def test_daily_weekly_reports(db, staff):
     from app.services import export
 
     assert export.build_xlsx(db, clock.today(), clock.today() + timedelta(days=1))[:2] == b"PK"
+
+
+def test_cash_withdrawal_inkassatsiya(db, staff, telegram):
+    from app.services import shifts
+
+    rec = staff["reception"]
+    b = new_booking(db, rec)  # smena 0 bilan ochiladi
+    accept_and_pay_cash(db, b, rec)
+    sh = shifts.current_shift(db, rec)
+    try:
+        shifts.withdraw(db, rec, sh, 100_000)
+        assert False, "reception o'zi ololmaydi"
+    except shifts.ShiftError:
+        pass
+    shifts.withdraw(db, staff["admin"], sh, 800_000, "inkassatsiya")
+    db.commit()
+    assert any("Inkassatsiya" in m["text"] for m in telegram.sent if m["chat_id"] == rec.telegram_id)
+    shifts.close_shift(db, rec, b.final_amount - 800_000)  # qolgan naqd — farq yo'q
+    db.commit()
+    assert not db.scalar(select(Alert).where(Alert.rule == "R9"))
+    # Keyingi smena aynan qolgan summa bilan qabul qilinadi — farq yo'q
+    shifts.open_shift(db, staff["reception2"], b.final_amount - 800_000)
+    db.commit()
+    assert not db.scalar(select(Alert).where(Alert.rule == "R9"))

@@ -10,6 +10,9 @@
     <div class="s">edge: {{ edge.last|dt }}{% for c in edge.cams_offline %} · ❌ {{ c.name }}{% endfor %}</div></a>
 </div>
 
+{% if worker and not worker.ok %}
+<section class="card warnbox"><b class="err">⚠️ Worker ishlamayapti</b> (oxirgi: {{ worker.last|dt }}). Ogohlantirishlar, hisobotlar va Telegram bot to'xtagan bo'lishi mumkin. Serverda: <code>docker compose restart worker</code></section>
+{% endif %}
 {% if pending_discounts or pending_cancels %}
 <section class="card warnbox">
   {% for x in pending_discounts %}<div>💸 Chegirma so'rovi #{{ x.id }}: bron <a href="/panel/bookings/{{ x.booking_id }}">#{{ x.booking_id }}</a>, {{ x.amount|sum }} — Telegramda tasdiqlang (muddat {{ x.expires_at|time }})</div>{% endfor %}

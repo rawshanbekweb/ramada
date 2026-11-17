@@ -137,6 +137,20 @@ class Shift(Base):
     user: Mapped[User] = relationship()
 
 
+class CashMovement(Base):
+    """Inkassatsiya: ega/administrator smena davomida kassadan naqd pul oldi."""
+
+    __tablename__ = "cash_movements"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    shift_id: Mapped[int] = mapped_column(ForeignKey("shifts.id"), index=True)
+    amount: Mapped[int] = mapped_column(Integer)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    note: Mapped[str | None] = mapped_column(Text)
+    at: Mapped[datetime] = mapped_column(UTCDateTime, default=_now)
+
+    user: Mapped[User] = relationship()
+
+
 class Booking(Base):
     __tablename__ = "bookings"
     id: Mapped[int] = mapped_column(primary_key=True)

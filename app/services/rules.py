@@ -88,7 +88,10 @@ def r8_underpaid(db: Session) -> None:
 
 
 def run_minutely(db: Session) -> None:
+    from app.services import maintenance
+
     steps = [
+        maintenance.worker_beat,
         discounts.expire_overdue,
         entry.check_edge,
         entry.resolve_suspects,

@@ -45,6 +45,10 @@ def later_call(db: Session, fn, *args) -> None:
 
 @event.listens_for(Session, "after_commit")
 def _flush_outbox(session: Session) -> None:
+    # SAVEPOINT (begin_nested) yopilganda ham after_commit chaqiriladi — ma'lumot hali bazada
+    # ko'rinmaydi. Xabarlar faqat tashqi tranzaksiya commit bo'lgandan keyin yuboriladi.
+    if session.in_nested_transaction():
+        return
     items = session.info.pop("tg_outbox", None)
     if not items:
         return
@@ -72,6 +76,8 @@ def _flush_outbox(session: Session) -> None:
 
 @event.listens_for(Session, "after_rollback")
 def _drop_outbox(session: Session) -> None:
+    if session.in_nested_transaction():
+        return
     session.info.pop("tg_outbox", None)
 
 

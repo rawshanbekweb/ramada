@@ -39,6 +39,8 @@ DEFAULTS: dict[str, Any] = {
     "clock_skew_limit_seconds": 120,  # NVR soati shundan ko'p farq qilsa — edge vaqti ishlatiladi
     "camera_silence_hours": 24,  # kamera shuncha soat hodisa bermasa — R12
     "calibration_until": None,  # zona sozlash rejimi (ISO vaqt) — R2/R3 vaqtincha o'chadi
+    "passport_photo_days": 90,  # chiqishdan shuncha kun keyin pasport surati diskdan o'chiriladi (0 — o'chirmaslik)
+    "snapshot_days": 90,  # kamera kadrlari (zaxira nusxa muddati bilan bir xil)
     "keyboard_check_enabled": True,  # FT-46
     "survey_enabled": True,
 }

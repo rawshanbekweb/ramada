@@ -96,6 +96,28 @@ Ikkala holatda ham sinov: har bir eshik oldida 3 soniya turing va «Oxirgi hodis
 
 **Cheklov:** oddiy harakat tahlili odamni hayvon yoki soyadan ajrata olmaydi. Shuning uchun yuqori daraja faqat kuchli dalil bilan beriladi, tungi yoritish esa bir xil bo'lishi kerak.
 
-## 6. QR plitalar
+## 6. Kamerani joyida sinash (haqiqiy kameradan oldin ham)
+
+Repozitoriyda virtual kamera simulyatori va to'liq sinov bor:
+
+```bash
+python -m tools.e2e_local          # virtual kameralar (MJPEG) + soxta Hikvision, ~3 daqiqa
+python -m tools.e2e_local --rtsp   # haqiqiy RTSP/H.264 (Ubuntu: GStreamer rtsp-server paketlari kerak)
+```
+
+Bu buyruq serverni, edge agentni va virtual koridorlarni ishga tushirib, 20 ta vaziyatni tekshiradi:
+- mehmon o'z xonasiga kirdi; boshqa xonaga kirdi; yonidan o'tib ketdi;
+- bo'sh koridor; chiroq o'chib-yondi;
+- kamera yopildi yoki o'chdi; Hikvision hodisalari; internet uzildi.
+
+Simulyatorni alohida ham ishga tushirish mumkin (`python -m tools.camsim`) — bu xodimlarga ko'rsatish va zonalar chizishni mashq qilish uchun qulay.
+
+## 7. Monitoring, ma'lumotlarni saqlash muddati, o'qitish
+
+- **Monitoring:** `GET /api/health` worker ishlamasa 503 qaytaradi. Uni tashqi monitoringga (masalan, UptimeRobot, har 5 daqiqada) ulang. Docker konteynerlari ham healthcheck bilan ishlaydi.
+- **Saqlash muddati:** pasport suratlari chiqishdan 90 kun keyin, kamera kadrlari 90 kundan keyin diskdan o'chiriladi. Muddatlar panelning Sozlamalar bo'limida o'zgartiriladi; bron va to'lov yozuvlari saqlanib qoladi.
+- **O'qitish:** alohida (bo'sh) bazada `python -m app.cli demo --days 14` — 2 haftalik real ko'rinishdagi tarix: bronlar, buzilishlar, hisobotlar. Panelda «DEMO» belgisi chiqadi. Haqiqiy bazada buyruq ishlamaydi.
+
+## 8. QR plitalar
 
 Panel → Xonalar → «QR plitalarni chop etish» (10×15 sm). Plita yo'qolsa yoki nusxalangan bo'lsa, «Yangilash» tugmasi eski kodni bekor qiladi.

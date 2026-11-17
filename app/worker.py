@@ -79,6 +79,9 @@ def build_scheduler() -> AsyncIOScheduler:
         hour = cfg.get_int(db, "daily_report_hour")
     sched.add_job(_job(send_daily), CronTrigger(hour=hour, minute=0, timezone=tz), id="daily")
     sched.add_job(_job(send_weekly), CronTrigger(day_of_week="mon", hour=hour, minute=5, timezone=tz), id="weekly")
+    from app.services import maintenance
+
+    sched.add_job(_job(maintenance.purge_old_files), CronTrigger(hour=3, minute=40, timezone=tz), id="retention")
     sched.add_job(_job(send_monthly), CronTrigger(day=1, hour=hour, minute=10, timezone=tz), id="monthly")
     # Kalit taxtasi: har kuni 10:00–22:00 orasida tasodifiy daqiqada
     def schedule_keyboard():

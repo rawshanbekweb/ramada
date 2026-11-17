@@ -25,6 +25,10 @@ services:
       SQ_STORAGE_DIR: /srv/storage
     volumes:
       - storage:/srv/storage
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/ping', timeout=5)"]
+      interval: 30s
+      retries: 3
     depends_on:
       db:
         condition: service_healthy
@@ -33,6 +37,11 @@ services:
     build: .
     restart: unless-stopped
     command: ["python", "-m", "app.worker"]
+    healthcheck:
+      # Worker har daqiqada bazaga «yurak urishi» yozadi; 5 daqiqa yo'q bo'lsa — unhealthy
+      test: ["CMD", "python", "-m", "app.cli", "health"]
+      interval: 60s
+      retries: 3
     env_file: .env
     environment:
       SQ_DATABASE_URL: postgresql+psycopg://shaffof:${POSTGRES_PASSWORD}@db/shaffof

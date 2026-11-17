@@ -64,8 +64,8 @@ def btn(key: str):
 
 MENUS = {
     Role.RECEPTION: [["m.new_guest", "m.guests"], ["m.shift", "m.rooms"], ["m.lang"]],
-    Role.ADMIN: [["m.new_guest", "m.guests"], ["m.shift", "m.requests"], ["m.today", "m.alerts"], ["m.rooms", "m.lang"]],
-    Role.OWNER: [["m.today", "m.alerts"], ["m.report", "m.requests"], ["m.guests", "m.new_guest"], ["m.lang"]],
+    Role.ADMIN: [["m.new_guest", "m.guests"], ["m.shift", "m.requests"], ["m.today", "m.alerts"], ["m.rooms", "m.collect"], ["m.lang"]],
+    Role.OWNER: [["m.today", "m.alerts"], ["m.report", "m.requests"], ["m.guests", "m.new_guest"], ["m.collect", "m.lang"]],
     Role.HOUSEKEEPER: [["m.morning", "m.cleaning"], ["m.qr_plates", "m.linen"], ["m.lang"]],
 }
 
