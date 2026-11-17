@@ -56,3 +56,20 @@ jobs:
           python-version: "3.12"
       - run: pip install -e ".[dev,edge]"
       - run: python -W ignore -m tools.e2e_local
+
+  docker:
+    # Ishlab chiqarish image'i yig'iladimi va migratsiyalar bilan ishga tushadimi
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t shaffof:ci .
+      - name: Konteynerni ishga tushirish
+        run: |
+          docker run -d --name sq -p 8000:8000 -e SQ_DATABASE_URL=sqlite:////srv/storage/ci.db shaffof:ci
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/api/ping && break; sleep 2; done
+          curl -sf http://127.0.0.1:8000/api/ping
+          curl -sf -o /dev/null http://127.0.0.1:8000/panel/login
+          docker exec sq python -m app.cli init --owner CI --login owner --password ci-pass-123
+          docker exec sq python -m app.cli seed-demo
+          docker logs sq | tail -20
