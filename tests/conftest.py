@@ -1,6 +1,7 @@
 import os
 
-os.environ["SQ_DATABASE_URL"] = "sqlite://"
+TEST_DB = os.environ.get("SQ_TEST_DATABASE_URL", "sqlite://")
+os.environ["SQ_DATABASE_URL"] = TEST_DB
 os.environ["SQ_SECRET_KEY"] = "test-secret-key-0123456789abcdef"
 os.environ["SQ_EDGE_SECRET"] = "edge-test-secret"
 os.environ["SQ_PAYME_MERCHANT_ID"] = "test-merchant"
@@ -23,7 +24,7 @@ from app.integrations import telegram as tg  # noqa: E402
 from app.models import User  # noqa: E402
 from app.security import hash_password  # noqa: E402
 
-engine = init_engine("sqlite://")
+engine = init_engine(TEST_DB)
 
 
 @pytest.fixture(autouse=True)

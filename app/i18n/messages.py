@@ -39,6 +39,8 @@ MESSAGES: dict[str, dict[str, str]] = {
     "g.extra": {"uz": "Qo'shimcha", "kaa": "Qosımsha", "ru": "Доплата", "en": "Extras"},
     "g.total": {"uz": "To'lanadigan summa", "kaa": "Tólenetuǵın summa", "ru": "К оплате", "en": "Amount to pay"},
     "g.with_discount": {"uz": "chegirma bilan", "kaa": "shegirme menen", "ru": "со скидкой", "en": "with discount"},
+    "g.early": {"uz": "Erta kirish", "kaa": "Erte kiriw", "ru": "Ранний заезд", "en": "Early check-in"},
+    "g.late": {"uz": "Kech chiqish", "kaa": "Kesh shıǵıw", "ru": "Поздний выезд", "en": "Late check-out"},
     "g.paid": {"uz": "To'langan", "kaa": "Tólengen", "ru": "Оплачено", "en": "Paid"},
     "g.due": {"uz": "Qoldiq", "kaa": "Qaldıq", "ru": "Остаток", "en": "Balance due"},
     "g.price_note": {

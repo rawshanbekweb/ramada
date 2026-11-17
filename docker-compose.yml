@@ -1,0 +1,75 @@
+# Ishlab chiqarish: docker compose up -d
+# Server O'zbekiston hududida joylashgan bo'lishi shart (TT 14-bo'lim).
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: shaffof
+      POSTGRES_USER: shaffof
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD kerak}
+      TZ: Asia/Tashkent
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shaffof"]
+      interval: 10s
+      retries: 5
+
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      SQ_DATABASE_URL: postgresql+psycopg://shaffof:${POSTGRES_PASSWORD}@db/shaffof
+      SQ_STORAGE_DIR: /srv/storage
+    volumes:
+      - storage:/srv/storage
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    build: .
+    restart: unless-stopped
+    command: ["python", "-m", "app.worker"]
+    env_file: .env
+    environment:
+      SQ_DATABASE_URL: postgresql+psycopg://shaffof:${POSTGRES_PASSWORD}@db/shaffof
+      SQ_STORAGE_DIR: /srv/storage
+    volumes:
+      - storage:/srv/storage
+    depends_on:
+      - web
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN kerak}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      - web
+
+  backup:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Asia/Tashkent
+    volumes:
+      - ./scripts/backup.sh:/backup.sh:ro
+      - backups:/backups
+      - storage:/srv/storage:ro
+    entrypoint: ["sh", "/backup.sh"]
+    depends_on:
+      - db
+
+volumes:
+  pgdata:
+  storage:
+  backups:
+  caddy_data:

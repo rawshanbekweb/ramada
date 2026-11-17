@@ -22,8 +22,8 @@
     {% for line in b.price_breakdown %}
       <tr>
         <td>{% if line.kind == "night" %}{{ line.date[8:10] }}.{{ line.date[5:7] }}{% if line.season %} · {{ line.season }}{% endif %}
-            {% elif line.kind == "early_checkin" %}⏰ early check-in {{ line.percent }}%
-            {% elif line.kind == "late_checkout" %}⏰ late check-out {{ line.percent }}%
+            {% elif line.kind == "early_checkin" %}⏰ {{ t("g.early", lang) }} {{ line.percent }}%
+            {% elif line.kind == "late_checkout" %}⏰ {{ t("g.late", lang) }} {{ line.percent }}%
             {% elif line.kind == "room_change" %}🔁 {{ line["from"] }} → {{ line.to }}
             {% else %}{{ line.kind }}{% endif %}</td>
         <td class="r">{{ line.amount|money(lang) }}</td>

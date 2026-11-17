@@ -115,7 +115,7 @@ def windows_covering(db: Session, at: datetime) -> list[EntryWindow]:
     return list(
         db.scalars(
             select(EntryWindow).where(
-                EntryWindow.opened_at <= at,
+                EntryWindow.opened_at <= at + timedelta(minutes=2),
                 EntryWindow.closes_at >= at,
                 EntryWindow.result.in_([WindowResult.OPEN, WindowResult.MISSED]),
             )

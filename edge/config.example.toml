@@ -1,0 +1,15 @@
+# Edge agent sozlamalari. Nusxa oling: cp edge/config.example.toml edge/config.toml
+server_url = "https://qabul.example.uz"     # SQ_BASE_URL bilan bir xil
+edge_secret = "SQ_EDGE_SECRET bilan bir xil uzun tasodifiy satr"
+
+nvr_host = "192.168.1.64"                    # NVR lokal IP manzili
+nvr_scheme = "http"
+nvr_user = "isapi_reader"                    # NVR'da faqat o'qish huquqli alohida foydalanuvchi oching
+nvr_password = "..."
+
+queue_path = "edge/edge.queue.db"            # internet uzilganda hodisalar shu yerda saqlanadi
+snapshots = true                             # hodisa paytidagi kadrni yuborish
+batch_size = 50
+heartbeat_seconds = 60
+channels = []                                # bo'sh — barcha kanallar
+verify_tls = true
