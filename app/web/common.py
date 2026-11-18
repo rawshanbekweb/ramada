@@ -54,3 +54,17 @@ def _demo_data() -> bool:
 
 
 env.globals.update(hotel_name=_hotel_name, calibration_on=_calibration_on, demo_data=_demo_data)
+
+
+def _open_alerts() -> int:
+    from sqlalchemy import func, select
+
+    from app.db import SessionLocal
+    from app.enums import AlertStatus
+    from app.models import Alert
+
+    with SessionLocal() as s:
+        return s.scalar(select(func.count()).select_from(Alert).where(Alert.status == AlertStatus.NEW)) or 0
+
+
+env.globals.update(open_alerts=_open_alerts)

@@ -105,8 +105,8 @@ def back(url: str) -> RedirectResponse:
 
 
 @router.get("/login", response_class=HTMLResponse)
-def login_page(request: Request):
-    return templates.TemplateResponse(request, "panel/login.html", {"error": None, "user": None})
+def login_page(request: Request, db: Session = Depends(get_db, scope="function")):
+    return templates.TemplateResponse(request, "panel/login.html", {"error": None, "user": None, "hotel": cfg.get(db, "hotel_name")})
 
 
 @router.post("/login")
@@ -122,7 +122,7 @@ def login(request: Request, login: str = Form(...), password: str = Form(...), d
     if failures >= LOGIN_MAX_FAILURES:
         return templates.TemplateResponse(
             request, "panel/login.html",
-            {"error": f"Urinishlar ko'p. {LOGIN_LOCK_MINUTES} daqiqadan keyin qayta urinib ko'ring.", "user": None},
+            {"error": f"Urinishlar ko'p. {LOGIN_LOCK_MINUTES} daqiqadan keyin qayta urinib ko'ring.", "user": None, "hotel": cfg.get(db, "hotel_name")},
             status_code=429,
         )
     user = db.scalar(select(User).where(User.login == login, User.active.is_(True)))
@@ -135,7 +135,8 @@ def login(request: Request, login: str = Form(...), password: str = Form(...), d
                 notify.later(db, o.telegram_id, f"🔐 Panelga «{login}» logini bilan {LOGIN_MAX_FAILURES} marta noto'g'ri "
                                                 f"parol kiritildi (IP {ip}). Kirish {LOGIN_LOCK_MINUTES} daqiqaga bloklandi.")
         return templates.TemplateResponse(
-            request, "panel/login.html", {"error": "Login yoki parol noto'g'ri", "user": None}, status_code=401
+            request, "panel/login.html", {"error": "Login yoki parol noto'g'ri", "user": None, "hotel": cfg.get(db, "hotel_name")},
+            status_code=401,
         )
     audit.log(db, audit.actor_of(user), "panel.login", user)
     resp = back("/panel/")

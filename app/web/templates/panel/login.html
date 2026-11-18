@@ -1,11 +1,14 @@
 {% extends "panel/base.html" %}
 {% block title %}Kirish{% endblock %}
-{% block content %}
-<form method="post" action="/panel/login" class="card narrow">
-  <h1>Shaffof qabul — panel</h1>
+{% block hotel %}{{ hotel }}{% endblock %}
+{% block login %}
+<form method="post" action="/panel/login" class="card">
+  <span class="mark">{{ hotel[:1] }}</span>
+  <h1>{{ hotel }}</h1>
+  <p class="sub">Shaffof qabul — boshqaruv paneli</p>
   {% if error %}<p class="err">{{ error }}</p>{% endif %}
-  <label>Login <input name="login" required autofocus></label>
-  <label>Parol <input name="password" type="password" required></label>
+  <label>Login <input name="login" required autofocus autocomplete="username"></label>
+  <label>Parol <input name="password" type="password" required autocomplete="current-password"></label>
   <button class="btn">Kirish</button>
 </form>
 {% endblock %}

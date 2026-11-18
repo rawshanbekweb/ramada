@@ -4,18 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
+<meta name="theme-color" content="#0f1a2c">
 <title>{% block title %}{{ hotel.name }}{% endblock %}</title>
 <link rel="stylesheet" href="/static/guest.css">
 </head>
 <body>
-<header class="top">
-  <div class="brand">{{ hotel.name }}</div>
+<header class="top"><div class="in">
+  <div class="brand"><span class="mark">{{ hotel.name[:1] }}</span><span>{{ hotel.name }}<small>Nukus</small></span></div>
   <nav class="langs">
     {% for code in ["kaa", "uz", "ru", "en"] %}
       <a href="{{ path }}?lang={{ code }}" class="{{ 'on' if code == lang else '' }}">{{ code|upper }}</a>
     {% endfor %}
   </nav>
-</header>
+</div></header>
 <main class="wrap">
 {% block content %}{% endblock %}
 </main>
