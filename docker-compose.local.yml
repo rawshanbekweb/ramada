@@ -1,0 +1,20 @@
+# Lokal kompyuterda sinash (Docker Desktop): demo ma'lumotlar + virtual kameralar.
+#   docker compose -f docker-compose.local.yml up --build
+# Panel: http://localhost:8000/panel/  (owner / ramada123),  kameralar: http://localhost:8601/
+# Ma'lumotlar `shaffof_local` hajmida saqlanadi; qaytadan boshlash: ... down -v
+services:
+  app:
+    build:
+      context: .
+      args:
+        EXTRAS: "[edge]"
+    command: ["python", "-m", "tools.run_local", "--host", "0.0.0.0", "--no-browser"]
+    ports:
+      - "8000:8000"
+      - "8601:8601"
+    volumes:
+      - shaffof_local:/srv/local
+    user: root
+
+volumes:
+  shaffof_local:

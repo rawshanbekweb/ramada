@@ -255,6 +255,8 @@ def make_handler(cams: dict[int, Camera], hik: FakeHikvision):
 
         def do_GET(self):
             p = self.path.split("?")[0]
+            if p == "/":
+                return self._send(200, control_page(cams).encode(), "text/html; charset=utf-8")
             if p == "/zones.json":
                 return self._send(200, json.dumps({"doors": DOORS, "width": W, "height": H}).encode())
             if p.startswith("/cam") and (p.endswith(".mjpg") or p.endswith(".jpg")):
@@ -337,10 +339,43 @@ def make_handler(cams: dict[int, Camera], hik: FakeHikvision):
     return Handler
 
 
-def serve(port: int, cameras: int, hik_user: str = "admin", hik_password: str = "Sim12345") -> ThreadingHTTPServer:
+def control_page(cams: dict) -> str:
+    """Virtual kamerani boshqarish sahifasi: jonli tasvir va tugmalar."""
+    rooms = getattr(control_page, "rooms", {})
+    blocks = []
+    for cid in cams:
+        doors = "".join(
+            f'<button onclick="act({{cam:{cid},action:\'stand\',door:{d["door"]},seconds:5}})">'
+            f'🚶 {rooms.get((cid, d["door"]), str(d["door"]) + "-eshik")} oldida turish</button>'
+            for d in DOORS
+        )
+        blocks.append(f"""
+<section><h2>{cid}-kamera</h2><img src="/cam{cid}.mjpg" alt="kamera {cid}">
+<div class="b">{doors}</div>
+<div class="b"><button onclick="act({{cam:{cid},action:'pass',seconds:3}})">🚶‍➡️ Koridordan o'tib ketish</button>
+<button onclick="act({{cam:{cid},action:'lights',level:0.45,seconds:8}})">💡 Chiroq o'chdi (8 s)</button>
+<button class="w" onclick="act({{cam:{cid},action:'cover',seconds:20}})">🙈 Kamerani yopish (20 s)</button>
+<button class="w" onclick="act({{cam:{cid},action:'offline',seconds:20}})">🔌 Kamera o'chdi (20 s)</button></div></section>""")
+    return f"""<!doctype html><html lang="uz"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Virtual kameralar</title><style>
+body{{font-family:system-ui,sans-serif;margin:16px;background:#f3f5f8;color:#1c2530}}h1{{font-size:20px}}
+section{{background:#fff;border:1px solid #e1e6ec;border-radius:10px;padding:12px;margin-bottom:16px}}
+img{{max-width:100%;border-radius:6px;display:block}}.b{{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}}
+button{{padding:8px 10px;border:0;border-radius:8px;background:#0b6bcb;color:#fff;cursor:pointer}}button.w{{background:#a15c00}}
+#log{{color:#13804b;min-height:1.2em}}</style></head><body>
+<h1>🎥 Virtual kameralar (sinov uchun)</h1>
+<p>Tugmani bosing — «odam» kadrda harakat qiladi, edge agent buni aniqlab serverga yuboradi. Natijani panelda ko'ring: Bandlik, Ogohlantirishlar, Kameralar.</p>
+<p id="log"></p>{"".join(blocks)}
+<script>function act(c){{fetch('/control',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(c)}})
+.then(()=>{{document.getElementById('log').textContent='✓ '+c.action+' — '+new Date().toLocaleTimeString()}})}}</script>
+</body></html>"""
+
+
+def serve(port: int, cameras: int, hik_user: str = "admin", hik_password: str = "Sim12345",
+          host: str = "127.0.0.1") -> ThreadingHTTPServer:
     cams = {i: Camera(i, seed=i) for i in range(1, cameras + 1)}
     hik = FakeHikvision(hik_user, hik_password, list(cams))
-    srv = ThreadingHTTPServer(("127.0.0.1", port), make_handler(cams, hik))
+    srv = ThreadingHTTPServer((host, port), make_handler(cams, hik))
     srv.daemon_threads = True
     srv.cams, srv.hik = cams, hik  # type: ignore[attr-defined]
     return srv
@@ -350,8 +385,11 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=int(os.environ.get("CAMSIM_PORT", 8601)))
     ap.add_argument("--cameras", type=int, default=2)
+    ap.add_argument("--host", default="127.0.0.1")
     a = ap.parse_args()
-    srv = serve(a.port, a.cameras)
+    srv = serve(a.port, a.cameras, host=a.host)
+    # Boshqaruv sahifasidagi yozuvlar: n-kamera → n-qavat (101..106, 201..206) — run_local shunday bog'laydi
+    control_page.rooms = {(c, d["door"]): f"{c}0{d['door']}-xona" for c in range(1, a.cameras + 1) for d in DOORS}
     print(f"Kamera simulyatori: http://127.0.0.1:{a.port}/cam1.mjpg … , Hikvision ISAPI: admin / Sim12345", flush=True)
     srv.serve_forever()
 

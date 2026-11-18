@@ -27,6 +27,12 @@ Xodimlar uchun qo'llanmalar: [docs/qollanma/](docs/qollanma/) (o'zbek, rus). Min
 
 TT talablari kodning qaysi joyida bajarilgani [docs/TT_MUVOFIQLIK.md](docs/TT_MUVOFIQLIK.md) faylida ko'rsatilgan.
 
+## O'z kompyuteringizda ko'rish (eng oson)
+
+**Windows:** `start.bat` ni ikki marta bosing. **Docker:** `docker compose -f docker-compose.local.yml up --build`.
+Panel: http://localhost:8000/panel/ (`owner` / `ramada123`), virtual kameralar: http://localhost:8601/.
+Batafsil: [docs/LOKAL.md](docs/LOKAL.md).
+
 ## Tez ishga tushirish (ishlab chiqish)
 
 ```bash

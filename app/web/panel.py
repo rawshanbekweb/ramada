@@ -249,6 +249,27 @@ def booking_resend(bid: int, user: User = Depends(current_user), db: Session = D
     return back(f"/panel/bookings/{bid}")
 
 
+@router.post("/bookings/{bid}/pay", dependencies=[Depends(check_csrf)])
+def booking_pay(
+    bid: int, method: str = Form(...), amount: str = Form(...), receipt_no: str = Form(...),
+    user: User = Depends(current_user), db: Session = Depends(get_db, scope="function"),
+):
+    """Administrator/ega to'lovni panel orqali kiritadi (o'z smenasi ochiq bo'lishi kerak)."""
+    b = db.get(Booking, bid)
+    digits = "".join(ch for ch in amount if ch.isdigit())
+    try:
+        bookings.record_payment(db, b, method, int(digits or 0), user=user, receipt_no=receipt_no)
+    except bookings.BookingError as e:
+        raise HTTPException(400, str(e))
+    return back(f"/panel/bookings/{bid}")
+
+
+@router.post("/bookings/{bid}/key", dependencies=[Depends(check_csrf)])
+def booking_key(bid: int, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
+    bookings.issue_key(db, db.get(Booking, bid), user)
+    return back(f"/panel/bookings/{bid}")
+
+
 @router.post("/bookings/{bid}/checkout", dependencies=[Depends(check_csrf)])
 def booking_checkout(bid: int, user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
     b = db.get(Booking, bid)
@@ -813,7 +834,30 @@ def shifts_page(request: Request, user: User = Depends(current_user), db: Sessio
     rows = db.scalars(select(Shift).order_by(Shift.id.desc()).limit(200)).all()
     taken = {s.id: sum(m.amount for m in shifts_svc.withdrawals(db, s)) for s in rows}
     expected_now = {s.id: shifts_svc.expected_cash(db, s) for s in rows if s.closed_at is None}
-    return render(request, "shifts.html", rows=rows, taken=taken, expected_now=expected_now)
+    return render(request, "shifts.html", rows=rows, taken=taken, expected_now=expected_now,
+                  my_shift=shifts_svc.current_shift(db, user))
+
+
+@router.post("/shifts/open", dependencies=[Depends(check_csrf)])
+def my_shift_open(amount: str = Form("0"), user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
+    from app.services import shifts as shifts_svc
+
+    try:
+        shifts_svc.open_shift(db, user, int("".join(ch for ch in amount if ch.isdigit()) or 0))
+    except shifts_svc.ShiftError as e:
+        raise HTTPException(400, str(e))
+    return back("/panel/shifts")
+
+
+@router.post("/shifts/close", dependencies=[Depends(check_csrf)])
+def my_shift_close(amount: str = Form(...), user: User = Depends(current_user), db: Session = Depends(get_db, scope="function")):
+    from app.services import shifts as shifts_svc
+
+    try:
+        shifts_svc.close_shift(db, user, int("".join(ch for ch in amount if ch.isdigit()) or 0))
+    except shifts_svc.ShiftError as e:
+        raise HTTPException(400, str(e))
+    return back("/panel/shifts")
 
 
 @router.post("/shifts/{sid:int}/withdraw", dependencies=[Depends(check_csrf)])

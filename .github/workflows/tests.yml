@@ -73,3 +73,21 @@ jobs:
           docker exec sq python -m app.cli init --owner CI --login owner --password ci-pass-123
           docker exec sq python -m app.cli seed-demo
           docker logs sq | tail -20
+
+  docker-local:
+    # Lokal sinov image'i (OpenCV bilan) va bitta buyruqli ishga tushirish
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f docker-compose.local.yml up -d --build
+      - name: Panel, virtual kameralar va edge agent ishlayaptimi
+        run: |
+          for i in $(seq 1 90); do curl -sf http://127.0.0.1:8000/api/ping && break; sleep 2; done
+          curl -sf -o /dev/null http://127.0.0.1:8000/panel/login
+          curl -sf -o /dev/null http://127.0.0.1:8601/
+          for i in $(seq 1 45); do curl -s http://127.0.0.1:8000/api/health | grep -q '"edge":{"ok":true' && break; sleep 2; done
+          curl -s http://127.0.0.1:8000/api/health
+          curl -s http://127.0.0.1:8000/api/health | grep -q '"edge":{"ok":true'
+      - if: always()
+        run: docker compose -f docker-compose.local.yml logs | tail -40

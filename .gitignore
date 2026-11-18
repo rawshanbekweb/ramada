@@ -7,3 +7,4 @@ __pycache__/
 storage/
 .pytest_cache/
 edge/*.queue.db
+local/

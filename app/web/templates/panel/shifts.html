@@ -2,6 +2,17 @@
 {% block title %}Smenalar{% endblock %}
 {% block content %}
 <h1>Smenalar</h1>
+<section class="card">
+{% if my_shift %}
+  <b>Sizning smenangiz ochiq</b> ({{ my_shift.opened_at|dt }}). Yopish — kassadagi naqdni sanab kiriting:
+  <form method="post" action="/panel/shifts/close" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <input name="amount" placeholder="Sanalgan naqd" inputmode="numeric" required><button class="btn sm">Smenani yopish</button></form>
+{% else %}
+  Panel orqali to'lov kiritish uchun o'z smenangizni oching (kassadagi naqd summa):
+  <form method="post" action="/panel/shifts/open" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <input name="amount" placeholder="Kassadagi naqd" inputmode="numeric" value="0"><button class="btn sm">Smenani ochish</button></form>
+{% endif %}
+</section>
 <table class="tbl"><tr><th>#</th><th>Xodim</th><th>Ochildi</th><th>Yopildi</th><th>Ochilishda</th><th>Inkassatsiya</th><th>Kutilgan</th><th>Sanalgan</th><th>Farq</th><th>Qabul farqi</th></tr>
 {% for s in rows %}<tr><td>{{ s.id }}</td><td>{{ s.user.full_name }}</td><td>{{ s.opened_at|dt }}</td><td>{{ s.closed_at|dt }}</td>
 <td>{{ s.opening_cash|sum }}</td><td>{{ taken.get(s.id, 0)|sum }}</td>

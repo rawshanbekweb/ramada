@@ -124,3 +124,25 @@ def test_panel_login_lockout(db, staff, telegram):
     clock.advance(minutes=16)
     r = c.post("/panel/login", data={"login": "owner", "password": "owner-pass-1"}, follow_redirects=False)
     assert r.status_code == 303
+
+
+def test_panel_shift_and_payment(db, staff):
+    import re
+
+    from app.models import Booking
+
+    b = new_booking(db, staff["reception"])
+    bookings.guest_accept(db, b, "dev-x")
+    db.commit()
+    c = TestClient(app, base_url="https://hotel.test")
+    c.post("/panel/login", data={"login": "admin", "password": "admin-pass-1"})
+    csrf = re.search(r'name="csrf" value="([^"]+)"', c.get("/panel/shifts").text).group(1)
+    r = c.post(f"/panel/bookings/{b.id}/pay", data={"csrf": csrf, "method": "cash", "amount": "1000000", "receipt_no": "P-1"})
+    assert r.status_code == 400  # smena yopiq
+    c.post("/panel/shifts/open", data={"csrf": csrf, "amount": "0"})
+    r = c.post(f"/panel/bookings/{b.id}/pay", data={"csrf": csrf, "method": "cash", "amount": "1 000 000", "receipt_no": "P-1"})
+    assert r.status_code == 200
+    db.expire_all()
+    assert db.get(Booking, b.id).stage == 1
+    c.post("/panel/shifts/close", data={"csrf": csrf, "amount": "1000000"})
+    assert "Smenani ochish" in c.get("/panel/shifts").text

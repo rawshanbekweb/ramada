@@ -22,7 +22,16 @@
     {% if b.cancel_reason %}<dt>Bekor sababi</dt><dd>{{ b.cancel_reason }}</dd>{% endif %}
   </dl>
   {% if b.is_open %}
+  <form method="post" action="/panel/bookings/{{ b.id }}/pay" class="inline card" style="margin-top:12px">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><b>To'lov kiritish:</b>
+    <select name="method"><option value="cash">Naqd</option><option value="terminal">Terminal</option></select>
+    <input name="amount" value="{{ b.balance_due if b.balance_due > 0 else '' }}" inputmode="numeric" placeholder="Summa" required size="10">
+    <input name="receipt_no" placeholder="Fiskal chek raqami" required size="12">
+    <button class="btn sm">💵 To'lovni saqlash</button>
+    <span class="muted">(smenangiz ochiq bo'lishi kerak — Smenalar)</span>
+  </form>
   <div class="actions">
+    <form method="post" action="/panel/bookings/{{ b.id }}/key"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn sm ghost">🔑 Kalit berish</button></form>
     <form method="post" action="/panel/bookings/{{ b.id }}/resend"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn sm ghost">SMS qayta yuborish</button></form>
     {% if b.status == "active" %}<form method="post" action="/panel/bookings/{{ b.id }}/checkout" onsubmit="return confirm('Chiqarilsinmi?')"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn sm ghost">Chiqarish</button></form>{% endif %}
     <form method="post" action="/panel/bookings/{{ b.id }}/cancel" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}"><input name="reason" placeholder="Bekor qilish sababi" required><button class="btn sm danger">Bekor qilish</button></form>
